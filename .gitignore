@@ -1,0 +1,86 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+# Visual Studio / Rider / VS Code common
+.vs/
+.vscode/
+.idea/
+
+# Build results
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Auto-generated files
+*.generated.cs
+*.g.cs
+*.g.i.cs
+
+# NuGet packages
+*.nupkg
+*.snupkg
+packages/
+.nuget/
+
+# Resharper
+_ReSharper*/
+*.DotSettings.user
+
+# Logs
+*.log
+
+# OS Files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# ASP.NET Scaffolding
+ScaffoldingReadMe.txt
+
+# Publish folder
+publish/
+
+# Azure Functions
+local.settings.json
+
+# Entity Framework
+Migrations/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Test result files
+TestResults/
+*.trx
+*.coverage
+
+# DotCover
+*.dotCover
+
+# Coverage reports
+coverage.*
+
+# StyleCop
+StyleCopReport.xml
+
+# Others
+*.cache
+*.pdb
+*.mdb
+
+# Ignore config secrets
+appsettings.*.json
+
+# Angular / Frontend
+# Игнорируем node_modules и сборку
+Client/node_modules/
+Client/dist/
+Client/.angular/
+Client/*.log

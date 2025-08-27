@@ -1,0 +1,32 @@
+<p-splitter style="height:100vh;" [panelSizes]="[30,70]">
+  <ng-template pTemplate>
+    <explorer-tree (getFolderByIdEvent)="onFolderSelectedFromTree($event)"
+      (fileSelectedEvent)="onTreeFileSelected($event)" (addFolderEvent)="openAddFolderDrawer($event)"
+      (renameFolderEvent)="openRenameFolderDrawer($event)" (deleteFolderEvent)="openConfirmationDialog($event)"
+      (uploadFilesEvent)="openUploadDialogFor($event)" (renameFileEvent)="openRenameFileDrawer($event)"
+      (deleteFileEvent)="openConfirmationDialogForFile($event)">
+    </explorer-tree>
+  </ng-template>
+
+  <ng-template pTemplate>
+    <explorer-files [folderId]="selectedFolderId" (openFolder)="onFolderSelectedFromFiles($event)"
+      (openFile)="openRenameFileDrawer($event)" (deleteFile)="openConfirmationDialogForFile($event)">
+    </explorer-files>
+  </ng-template>
+
+</p-splitter>
+
+<p-drawer [(visible)]="drawerVisible" position="right" [modal]="true">
+  <h3 *ngIf="drawerMode === DrawerMode.Add">Create folder</h3>
+  <h3 *ngIf="drawerMode === DrawerMode.RenameFolder">Rename folder</h3>
+  <h3 *ngIf="drawerMode === DrawerMode.RenameFile">Rename file</h3>
+
+  <input type="text" [(ngModel)]="newObjectName" placeholder="Enter name" />
+
+  <button pButton [label]="drawerMode === DrawerMode.Add ? 'Create' : 'Rename'" (click)="submitDrawer()">
+  </button>
+</p-drawer>
+
+<p-confirmDialog></p-confirmDialog>
+
+<app-upload-dialog #uploadDialog (filesSelected)="handleFiles($event)"></app-upload-dialog>

@@ -1,0 +1,10 @@
+<p-dialog [(visible)]="visible" [modal]="true" header="Upload Files" [style]="{width: '400px'}">
+
+  <p-fileUpload name="files[]" multiple="true" accept=".png,.jpg,.jpeg,.txt" maxFileSize="5000000" customUpload="true"
+    (uploadHandler)="onUpload($event)">
+  </p-fileUpload>
+
+  <ng-template pTemplate="footer">
+    <p-button label="Close" icon="pi pi-times" (onClick)="close()"></p-button>
+  </ng-template>
+</p-dialog>

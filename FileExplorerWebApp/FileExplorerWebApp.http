@@ -1,0 +1,6 @@
+@FileExplorerWebApp_HostAddress = http://localhost:5123
+
+# GET {{FileExplorerWebApp_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

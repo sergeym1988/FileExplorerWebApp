@@ -1,0 +1,27 @@
+<div class="explorer-tree-container">
+  <div class="tree-scroll">
+    <p-tree [value]="folderOnlyNodes()" selectionMode="single" [(selection)]="selectedNode"
+      (onNodeSelect)="onNodeSelect($event)" (onNodeExpand)="onNodeExpand($event)"
+      (onNodeCollapse)="onNodeCollapse($event)" [trackBy]="trackByNode">
+
+      <ng-template let-node pTemplate="default">
+        <div *ngIf="node?.data?.type === 'folder'" class="tree-row group">
+          <span class="node-label" (click)="onLabelClick(node)">
+            <i class="pi pi-folder mr-2"></i>
+            {{ node.label }}
+          </span>
+
+          <div class="node-actions" (click)="$event.stopPropagation()">
+            <button pButton icon="pi pi-plus" class="p-button-rounded p-button-sm" (click)="addFolder(node)"></button>
+            <button pButton icon="pi pi-pencil" class="p-button-rounded p-button-sm"
+              (click)="renameFolder(node)"></button>
+            <button pButton icon="pi pi-upload" class="p-button-rounded p-button-sm"
+              (click)="uploadFile(node)"></button>
+            <button pButton icon="pi pi-trash" class="p-button-rounded p-button-sm p-button-danger"
+              (click)="deleteFolder(node)"></button>
+          </div>
+        </div>
+      </ng-template>
+    </p-tree>
+  </div>
+</div>
