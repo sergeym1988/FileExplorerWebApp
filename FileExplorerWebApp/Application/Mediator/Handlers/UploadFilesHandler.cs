@@ -1,11 +1,14 @@
 ﻿using AutoMapper;
-using FileExplorerWebApp;
 using FileExplorerWebApp.Application.DTOs;
 using FileExplorerWebApp.Application.Interfaces.Repositories;
+using FileExplorerWebApp.Application.Options;
 using MediatR;
 using Microsoft.Extensions.Options;
 using static FileExplorerWebApp.Application.Mediator.Commands.FileCommands;
 
+/// <summary>
+/// The upload files handler.
+/// </summary>
 public class UploadFilesHandler : IRequestHandler<UploadFilesCommand, List<FileDto>>
 {
     private readonly IRepositoryWrapper _repositoryWrapper;

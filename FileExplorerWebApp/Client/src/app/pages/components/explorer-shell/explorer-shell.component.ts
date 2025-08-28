@@ -81,7 +81,6 @@ export class ExplorerShellComponent {
       const newFolder: Partial<Folder> = { name, parentFolderId: this.selectedFolderId };
       this.folderService.createFolder(newFolder).subscribe({
         next: () => {
-          // auto-expand parent to reveal the new folder
           this.tree?.expandFolderById(this.selectedFolderId!);
           this.closeDrawer();
         },
@@ -144,7 +143,6 @@ export class ExplorerShellComponent {
   }
 
   deleteFile(fileId: string) {
-    console.log('deleteFile', fileId);
     this.fileService.deleteFile(fileId).subscribe({
       next: () => console.log('File deleted'),
       error: err => console.error('Error while deleting file:', err)
@@ -159,7 +157,7 @@ export class ExplorerShellComponent {
     });
   }
 
-  openUploadDialogFor(parentId: string) {
+  openUploadDialog(parentId: string) {
     this.pendingUploadParentId = parentId;
     this.uploadDialog.open();
   }
@@ -168,7 +166,7 @@ export class ExplorerShellComponent {
     if (ev && ev.files) {
       this.uploadToServer(ev.parentId, ev.files as globalThis.File[]);
     } else if (typeof ev === 'string') {
-      this.openUploadDialogFor(ev);
+      this.openUploadDialog(ev);
     }
   }
 
@@ -186,7 +184,7 @@ export class ExplorerShellComponent {
     if (ev.parentId) {
       this.selectedFolderId = ev.parentId;
       this.folderService.loadFolderChildren(ev.parentId).subscribe({
-        next: () => { /* ok */ },
+        next: () => { },
         error: err => console.error('Error while loading folder on file selection:', err)
       });
     }

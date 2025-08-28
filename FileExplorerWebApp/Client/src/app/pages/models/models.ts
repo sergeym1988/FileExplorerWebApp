@@ -19,6 +19,7 @@ export interface AppFile {
   previewMime?: string;
   previewKind?: PreviewKind;
 }
+
 export enum PreviewKind {
   None = 0,
   Image = 1,

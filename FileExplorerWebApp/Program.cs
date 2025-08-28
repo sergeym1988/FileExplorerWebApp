@@ -1,7 +1,7 @@
 ﻿using System.Reflection;
-using FileExplorerWebApp;
 using FileExplorerWebApp.Application.Interfaces.Repositories;
 using FileExplorerWebApp.Application.Mapper;
+using FileExplorerWebApp.Application.Options;
 using FileExplorerWebApp.Infrastructure.Persistence;
 using FileExplorerWebApp.Infrastructure.Repositories;
 using Microsoft.AspNetCore.RateLimiting;

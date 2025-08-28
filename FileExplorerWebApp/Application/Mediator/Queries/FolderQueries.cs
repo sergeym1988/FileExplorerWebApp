@@ -3,6 +3,9 @@ using MediatR;
 
 namespace FileExplorerWebApp.Application.Mediator.Queries
 {
+    /// <summary>
+    /// The folder queries.
+    /// </summary>
     public class FolderQueries
     {
         /// <summary>

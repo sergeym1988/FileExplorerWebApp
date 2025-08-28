@@ -4,6 +4,10 @@ using static FileExplorerWebApp.Application.Mediator.Commands.FolderCommands;
 
 namespace FileExplorerWebApp.Application.Mediator.Handlers
 {
+    /// <summary>
+    /// The delete folder handler.
+    /// </summary>
+    /// <seealso cref="MediatR.IRequestHandler&lt;FileExplorerWebApp.Application.Mediator.Commands.FolderCommands.DeleteFolderCommand, System.Boolean&gt;" />
     public class DeleteFolderHandler : IRequestHandler<DeleteFolderCommand, bool>
     {
         private readonly IRepositoryWrapper _repositoryWrapper;

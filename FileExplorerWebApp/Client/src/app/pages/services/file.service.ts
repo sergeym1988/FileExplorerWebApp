@@ -48,8 +48,4 @@ export class FileService {
       })
     );
   }
-
-  downloadFile(fileId: string): Observable<Blob> {
-    return this.http.get(`${this.apiUrl}/download/${fileId}`, { responseType: 'blob' });
-  }
 }

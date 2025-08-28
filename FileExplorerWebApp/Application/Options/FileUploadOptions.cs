@@ -1,4 +1,4 @@
-﻿namespace FileExplorerWebApp
+﻿namespace FileExplorerWebApp.Application.Options
 {
     /// <summary>
     /// The file upload options

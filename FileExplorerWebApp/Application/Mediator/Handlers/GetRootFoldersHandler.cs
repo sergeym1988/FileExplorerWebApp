@@ -7,6 +7,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FileExplorerWebApp.Application.Mediator.Handlers
 {
+    /// <summary>
+    /// The get root folder handler
+    /// </summary>
+    /// <seealso cref="MediatR.IRequestHandler&lt;FileExplorerWebApp.Application.Mediator.Queries.FolderQueries.GetRootFoldersQuery, System.Collections.Generic.List&lt;FileExplorerWebApp.Application.DTOs.FolderDto&gt;&gt;" />
     public class GetRootFoldersHandler
         : IRequestHandler<FolderQueries.GetRootFoldersQuery, List<FolderDto>>
     {

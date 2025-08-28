@@ -4,6 +4,10 @@ using MediatR;
 
 namespace FileExplorerWebApp.Application.Mediator.Handlers
 {
+    /// <summary>
+    /// The rename folder handler.
+    /// </summary>
+    /// <seealso cref="MediatR.IRequestHandler&lt;FileExplorerWebApp.Application.Mediator.Commands.FolderCommands.RenameFolderCommand, System.Boolean&gt;" />
     public class RenameFolderHandler : IRequestHandler<FolderCommands.RenameFolderCommand, bool>
     {
         private readonly IRepositoryWrapper _repositoryWrapper;

@@ -7,6 +7,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FileExplorerWebApp.Application.Mediator.Handlers
 {
+    /// <summary>
+    /// Get subfolders by parent folder id.
+    /// </summary>
+    /// <seealso cref="MediatR.IRequestHandler&lt;FileExplorerWebApp.Application.Mediator.Queries.FolderQueries.GetSubfoldersByIdQuery, System.Collections.Generic.List&lt;FileExplorerWebApp.Application.DTOs.FolderDto&gt;&gt;" />
     public class GetSubfoldersByIdHandler
         : IRequestHandler<FolderQueries.GetSubfoldersByIdQuery, List<FolderDto>?>
     {

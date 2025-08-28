@@ -18,7 +18,7 @@ namespace FileExplorerWebApp.Application.Mapper
 
             CreateMap<Folder, FolderDto>()
                 .ReverseMap()
-                .ForMember(dest => dest.ParentFolder, opt => opt.Ignore())
+                //.ForMember(dest => dest.ParentFolder, opt => opt.Ignore())
                 .ForMember(dest => dest.Id, opt => opt.Ignore());
 
             CreateMap<Domain.Entities.File, FileDto>()

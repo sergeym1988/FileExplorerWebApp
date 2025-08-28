@@ -5,7 +5,7 @@ using MediatR;
 namespace FileExplorerWebApp.Application.Mediator.Handlers
 {
     /// <summary>
-    /// The delete file handler
+    /// The delete file handler.
     /// </summary>
     public class DeleteFileHandler : IRequestHandler<FileCommands.DeleteFileCommand, bool>
     {

@@ -53,12 +53,11 @@
 }
 
 .preview-cell {
-  // display: flex;
   align-items: center;
   justify-content: center;
   padding: 0.25rem;
   overflow: hidden;
-  min-width: 96px;
+  min-width: 120px;
 }
 
 .file-preview {

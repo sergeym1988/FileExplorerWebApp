@@ -2,7 +2,7 @@
   <ng-template pTemplate>
     <explorer-tree [selectedFolderId]="selectedFolderId" (getFolderByIdEvent)="onFolderSelectedFromTree($event)"
       (addFolderEvent)="openAddFolderDrawer($event)" (renameFolderEvent)="openRenameFolderDrawer($event)"
-      (deleteFolderEvent)="openConfirmationDialog($event)" (uploadFilesEvent)="openUploadDialogFor($event)">
+      (deleteFolderEvent)="openConfirmationDialog($event)" (uploadFilesEvent)="openUploadDialog($event)">
     </explorer-tree>
   </ng-template>
 
@@ -15,10 +15,15 @@
 </p-splitter>
 
 <p-drawer [(visible)]="drawerVisible" position="right" [modal]="true">
-  <h3 *ngIf="drawerMode === DrawerMode.Add">Create folder</h3>
-  <h3 *ngIf="drawerMode === DrawerMode.RenameFolder">Rename folder</h3>
-  <h3 *ngIf="drawerMode === DrawerMode.RenameFile">Rename file</h3>
-
+  @if (drawerMode === DrawerMode.Add) {
+  <h3>Create folder</h3>
+  }
+  @else if (drawerMode === DrawerMode.RenameFolder) {
+  <h3>Rename folder</h3>
+  }
+  @else if (drawerMode === DrawerMode.RenameFile) {
+  <h3>Rename file</h3>
+  }
   <input type="text" [(ngModel)]="newObjectName" placeholder="Enter name" />
 
   <button pButton [label]="drawerMode === DrawerMode.Add ? 'Create' : 'Rename'" (click)="submitDrawer()">

@@ -3,6 +3,9 @@ using MediatR;
 
 namespace FileExplorerWebApp.Application.Mediator.Commands
 {
+    /// <summary>
+    /// The file commands.
+    /// </summary>
     public class FileCommands
     {
         /// <summary>

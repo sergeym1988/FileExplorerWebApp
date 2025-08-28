@@ -1,4 +1,4 @@
-﻿namespace FileExplorerWebApp
+﻿namespace FileExplorerWebApp.Infrastructure.Utils
 {
     using System;
     using System.Collections.Concurrent;
@@ -117,7 +117,7 @@
             try
             {
                 using var ms = new MemoryStream(imageBytes);
-                using var srcImg = System.Drawing.Image.FromStream(ms);
+                using var srcImg = Image.FromStream(ms);
 
                 var (newW, newH) = ScaleToFit(srcImg.Width, srcImg.Height, maxWidth, maxHeight);
 
