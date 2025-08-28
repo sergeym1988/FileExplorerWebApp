@@ -21,8 +21,6 @@ export class ExplorerTreeComponent {
   @Output() deleteFolderEvent = new EventEmitter<Folder>();
   @Output() getFolderByIdEvent = new EventEmitter<string>();
   @Output() uploadFilesEvent = new EventEmitter<string>();
-  @Output() renameFileEvent = new EventEmitter<string>();
-  @Output() deleteFileEvent = new EventEmitter<AppFile>();
 
 
   selectedNode: TreeNode | null = null;
@@ -81,8 +79,7 @@ export class ExplorerTreeComponent {
   renameFolder(node: TreeNode) { this.renameFolderEvent.emit(node.key as string); }
   deleteFolder(node: TreeNode) { this.deleteFolderEvent.emit(node.data.folder as Folder); }
   uploadFile(node: TreeNode) { this.uploadFilesEvent.emit(node.key as string); }
-  renameFile(node: TreeNode) { this.renameFileEvent.emit(node.key as string); }
-  deleteFile(node: TreeNode) { this.deleteFileEvent.emit(node.data.file as AppFile); }
+
 
   getFileIconClass(mime?: string) {
     if (!mime) return 'pi pi-file';
@@ -144,5 +141,10 @@ export class ExplorerTreeComponent {
         }
         return clone;
       });
+  }
+  expandFolderById(folderId: string) {
+    if (!folderId) return;
+    this.expandedKeys.add(folderId);
+    this.folderService.loadFolderChildren(folderId).subscribe();
   }
 }

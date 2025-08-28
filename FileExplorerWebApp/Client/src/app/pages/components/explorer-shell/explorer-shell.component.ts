@@ -36,6 +36,7 @@ import { finalize } from 'rxjs';
 export class ExplorerShellComponent {
 
   @ViewChild('uploadDialog') uploadDialog!: UploadDialogComponent;
+  @ViewChild(ExplorerTreeComponent) tree!: ExplorerTreeComponent;
   public DrawerMode = DrawerMode;
 
   isUploading = signal(false);
@@ -79,7 +80,11 @@ export class ExplorerShellComponent {
     if (this.drawerMode === DrawerMode.Add && this.selectedFolderId) {
       const newFolder: Folder = { name, parentFolderId: this.selectedFolderId };
       this.folderService.createFolder(newFolder).subscribe({
-        next: () => this.closeDrawer(),
+        next: () => {
+          // auto-expand parent to reveal the new folder
+          this.tree?.expandFolderById(this.selectedFolderId!);
+          this.closeDrawer();
+        },
         error: err => console.error('Error while creating folder:', err)
       });
     }
@@ -104,7 +109,6 @@ export class ExplorerShellComponent {
   closeDrawer() {
     this.drawerVisible = false;
     this.newObjectName = '';
-    this.selectedFolderId = null;
     this.selectedFileId = null;
   }
 

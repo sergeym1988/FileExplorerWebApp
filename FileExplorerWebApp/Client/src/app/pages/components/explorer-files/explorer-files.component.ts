@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnDestroy } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnDestroy, effect } from '@angular/core';
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { CommonModule } from '@angular/common';
@@ -23,7 +23,7 @@ export class ExplorerFilesComponent implements OnDestroy {
   @Input()
   set folderId(value: string | null) {
     this._folderId = value;
-    if (value) {
+    if (value) {    
       this.loadFolderContent(value);
     } else {
       this.clearPreviewCacheForAll();
@@ -45,7 +45,22 @@ export class ExplorerFilesComponent implements OnDestroy {
   constructor(
     private folderService: FolderService,
     private sanitizer: DomSanitizer
-  ) { }
+  ) {   
+    effect(() => {
+      const currentFolderId = this._folderId;
+      const folders = this.folderService.folders();
+      if (!currentFolderId) {
+        this.folderContent = [];
+        return;
+      }
+      const folder = this.findFolderById(folders, currentFolderId);
+      if (folder) {
+        const subFolders = Array.isArray(folder.subFolders) ? folder.subFolders : [];
+        const files = Array.isArray(folder.files) ? folder.files : [];
+        this.folderContent = [...subFolders, ...files];
+      }
+    });
+  }
 
   onRenameFileClicked(file: AppFile, ev?: MouseEvent) {
     ev?.stopPropagation();
@@ -60,25 +75,24 @@ export class ExplorerFilesComponent implements OnDestroy {
   }
 
   private loadFolderContent(folderId: string) {
-    this.clearPreviewCacheForAll(); // clear prev previews when folder changes (avoid leaks)
-    this.folderService.getChildrenByParentId(folderId).subscribe({
-      next: (resp: any) => {
-        const parentDto = Array.isArray(resp) ? resp[0] : resp;
-        if (!parentDto) {
-          this.folderContent = [];
-          return;
-        }
-
-        const subFolders: Folder[] = Array.isArray(parentDto.subFolders) ? parentDto.subFolders : [];
-        const files: AppFile[] = Array.isArray(parentDto.files) ? parentDto.files : [];
-
-        this.folderContent = [...subFolders, ...files];
-      },
+    this.clearPreviewCacheForAll(); 
+    this.folderService.loadFolderChildren(folderId).subscribe({
+      next: () => { /* state updated through signal effect */ },
       error: err => {
         console.error(err);
         this.folderContent = [];
       }
     });
+  }
+
+  private findFolderById(folders: Folder[] | undefined, id: string | null | undefined): Folder | undefined {
+    if (!folders || !id) return undefined;
+    for (const f of folders) {
+      if (f.id === id) return f;
+      const found = this.findFolderById(f.subFolders, id);
+      if (found) return found;
+    }
+    return undefined;
   }
 
   // ---- helpers / type guards ----
