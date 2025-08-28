@@ -67,7 +67,8 @@ export class ExplorerTreeComponent {
     if (id) this.expandedKeys.add(id);
 
     if (!node.children || node.children.length === 0) {
-      this.folderService.loadFolderChildren(id).subscribe();
+      // Load only subfolders on expand (no files) for backend optimization
+      this.folderService.loadSubFolders(id).subscribe();
     }
   }
 

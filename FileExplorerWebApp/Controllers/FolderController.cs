@@ -41,21 +41,42 @@ namespace FileExplorerWebApp.Controllers
         }
 
         /// <summary>
-        /// Get folder by id.
+        /// Get folder content by id.
         /// </summary>
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetFolderById(Guid id)
+        [HttpGet("{id}/content")]
+        public async Task<IActionResult> GetFolderContentById(Guid id)
         {
             try
             {
-                var folder = await _mediator.Send(new GetFolderByIdQuery(id));
+                var content = await _mediator.Send(new GetFolderContentByIdQuery(id));
+                if (content != null)
+                    return Ok(content);
+                return NotFound();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while retrieving folder's {FolderId} content ", id);
+            }
+
+            return BadRequest();
+        }
+
+        /// <summary>
+        /// Get subfolders by parent folder id.
+        /// </summary>
+        [HttpGet("{id}/subfolders")]
+        public async Task<IActionResult> GetSubfoldersById(Guid id)
+        {
+            try
+            {
+                var folder = await _mediator.Send(new GetSubfoldersByIdQuery(id));
                 if (folder != null)
                     return Ok(folder);
                 return NotFound();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error while retrieving folder {FolderId}", id);
+                _logger.LogError(ex, "Error while retrieving subfolders by folder {FolderId}", id);
             }
 
             return BadRequest();

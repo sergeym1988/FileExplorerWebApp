@@ -18,12 +18,16 @@ export class FolderService {
     );
   }
 
-  getChildrenByParentId(parentId: string): Observable<Folder[]> {
-    return this.http.get<Folder[]>(`${this.apiUrl}/${parentId}`);
+  getContentByParentFolderId(parentId: string): Observable<Folder[]> {
+    return this.http.get<Folder[]>(`${this.apiUrl}/${parentId}/content`);
+  }
+
+  getSubFoldersByParentId(parentId: string): Observable<Folder[]> {
+    return this.http.get<Folder[]>(`${this.apiUrl}/${parentId}/subfolders`);
   }
 
   loadFolderChildren(parentId: string): Observable<Folder[]> {
-    return this.getChildrenByParentId(parentId).pipe(
+    return this.getContentByParentFolderId(parentId).pipe(
       tap(response => {
         const parentDto = response[0];
         if (!parentDto) return;
@@ -34,6 +38,24 @@ export class FolderService {
             parentId,
             parentDto.subFolders ?? [],
             parentDto.files ?? []
+          )
+        );
+      })
+    );
+  }
+
+  loadSubFolders(parentId: string): Observable<Folder[]> {
+    return this.getSubFoldersByParentId(parentId).pipe(
+      tap(response => {
+        const parentDto = response[0];
+        if (!parentDto) return;
+
+        this.folders.update(current =>
+          this.insertChildrenImmutable(
+            current,
+            parentId,
+            parentDto.subFolders ?? [],
+            undefined
           )
         );
       })
