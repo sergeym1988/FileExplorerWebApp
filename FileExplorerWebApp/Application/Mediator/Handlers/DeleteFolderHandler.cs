@@ -1,10 +1,10 @@
 ﻿using FileExplorerWebApp.Application.Interfaces.Repositories;
-using FileExplorerWebApp.Application.Mediator.Commands;
 using MediatR;
+using static FileExplorerWebApp.Application.Mediator.Commands.FolderCommands;
 
 namespace FileExplorerWebApp.Application.Mediator.Handlers
 {
-    public class DeleteFolderHandler : IRequestHandler<FolderCommands.DeleteFolderCommand, bool>
+    public class DeleteFolderHandler : IRequestHandler<DeleteFolderCommand, bool>
     {
         private readonly IRepositoryWrapper _repositoryWrapper;
         private readonly ILogger<DeleteFolderHandler> _logger;
@@ -19,7 +19,7 @@ namespace FileExplorerWebApp.Application.Mediator.Handlers
         }
 
         public async Task<bool> Handle(
-            FolderCommands.DeleteFolderCommand request,
+            DeleteFolderCommand request,
             CancellationToken cancellationToken
         )
         {

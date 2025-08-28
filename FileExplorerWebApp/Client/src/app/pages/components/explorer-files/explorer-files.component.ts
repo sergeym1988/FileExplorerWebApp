@@ -1,5 +1,6 @@
 import { Component, Input, Output, EventEmitter, OnDestroy } from '@angular/core';
 import { TableModule } from 'primeng/table';
+import { ButtonModule } from 'primeng/button';
 import { CommonModule } from '@angular/common';
 import { Folder, AppFile, PreviewKind } from '../../models/models';
 import { FolderService } from '../../services/folder.service';
@@ -10,7 +11,7 @@ type FolderOrFile = Folder | AppFile;
 @Component({
   selector: 'explorer-files',
   standalone: true,
-  imports: [TableModule, CommonModule],
+  imports: [TableModule, ButtonModule, CommonModule],
   templateUrl: 'explorer-files.component.html',
   styleUrls: ['explorer-files.component.scss']
 })
@@ -33,8 +34,8 @@ export class ExplorerFilesComponent implements OnDestroy {
 
   @Output() openFolder = new EventEmitter<string>();
   @Output() openFile = new EventEmitter<string>();
-  @Output() renameFile = new EventEmitter<AppFile>();
-  @Output() deleteFile = new EventEmitter<AppFile>();
+  @Output() renameFileEvent = new EventEmitter<string>();
+  @Output() deleteFileEvent = new EventEmitter<AppFile>();
 
   folderContent: FolderOrFile[] = [];
 
@@ -45,6 +46,18 @@ export class ExplorerFilesComponent implements OnDestroy {
     private folderService: FolderService,
     private sanitizer: DomSanitizer
   ) { }
+
+  onRenameFileClicked(file: AppFile, ev?: MouseEvent) {
+    ev?.stopPropagation();
+    if (!file || !file.id) return;
+    this.renameFileEvent.emit(file.id);
+  }
+
+  onDeleteFileClicked(file: AppFile, ev?: MouseEvent) {
+    ev?.stopPropagation();
+    if (!file) return;
+    this.deleteFileEvent.emit(file);
+  }
 
   private loadFolderContent(folderId: string) {
     this.clearPreviewCacheForAll(); // clear prev previews when folder changes (avoid leaks)
@@ -105,32 +118,14 @@ export class ExplorerFilesComponent implements OnDestroy {
     }
   }
 
-  onRenameFileClicked(item: any, ev?: MouseEvent) {
-    ev?.stopPropagation();
-    if (this.isFile(item)) this.renameFile.emit(item);
-  }
 
-  onDeleteFileClicked(item: any, ev?: MouseEvent) {
-    ev?.stopPropagation();
-    if (this.isFile(item)) this.deleteFile.emit(item);
-  }
+
+
 
   trackById(_index: number, item: any) {
     return item?.id ?? _index;
   }
 
-  // ---- preview helpers ----
-
-  /**
-   * Returns a SafeUrl (or null) to be used as <img src="..."> for image previews.
-   * Accepts preview values as:
-   *  - base64 string from backend (common)
-   *  - ArrayBuffer
-   *  - Blob
-   *
-   * For base64 strings we create a data: URI.
-   * For ArrayBuffer/Blob we create an object URL and sanitize it.
-   */
   getPreviewImageSrc(file: AppFile): SafeUrl | null {
     if (!file || !file.preview || file.previewKind === undefined) return null;
     if (file.previewKind === PreviewKind.None) return null;

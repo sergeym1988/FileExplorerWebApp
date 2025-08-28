@@ -1,16 +1,14 @@
 <p-splitter style="height:100vh;" [panelSizes]="[30,70]">
   <ng-template pTemplate>
     <explorer-tree (getFolderByIdEvent)="onFolderSelectedFromTree($event)"
-      (fileSelectedEvent)="onTreeFileSelected($event)" (addFolderEvent)="openAddFolderDrawer($event)"
-      (renameFolderEvent)="openRenameFolderDrawer($event)" (deleteFolderEvent)="openConfirmationDialog($event)"
-      (uploadFilesEvent)="openUploadDialogFor($event)" (renameFileEvent)="openRenameFileDrawer($event)"
-      (deleteFileEvent)="openConfirmationDialogForFile($event)">
+      (addFolderEvent)="openAddFolderDrawer($event)" (renameFolderEvent)="openRenameFolderDrawer($event)"
+      (deleteFolderEvent)="openConfirmationDialog($event)" (uploadFilesEvent)="openUploadDialogFor($event)">
     </explorer-tree>
   </ng-template>
 
   <ng-template pTemplate>
     <explorer-files [folderId]="selectedFolderId" (openFolder)="onFolderSelectedFromFiles($event)"
-      (openFile)="openRenameFileDrawer($event)" (deleteFile)="openConfirmationDialogForFile($event)">
+      (renameFileEvent)="openRenameFileDrawer($event)" (deleteFileEvent)="openConfirmationDialogForFile($event)">
     </explorer-files>
   </ng-template>
 

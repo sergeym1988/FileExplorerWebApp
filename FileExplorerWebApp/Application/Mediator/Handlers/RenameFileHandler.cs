@@ -4,17 +4,14 @@ using MediatR;
 
 namespace FileExplorerWebApp.Application.Mediator.Handlers
 {
-    /// <summary>
-    /// The delete file handler
-    /// </summary>
-    public class DeleteFileHandler : IRequestHandler<FileCommands.DeleteFileCommand, bool>
+    public class RenameFileHandler : IRequestHandler<FileCommands.RenameFileCommand, bool>
     {
         private readonly IRepositoryWrapper _repositoryWrapper;
-        private readonly ILogger<DeleteFileHandler> _logger;
+        private readonly ILogger<RenameFileHandler> _logger;
 
-        public DeleteFileHandler(
+        public RenameFileHandler(
             IRepositoryWrapper repositoryWrapper,
-            ILogger<DeleteFileHandler> logger
+            ILogger<RenameFileHandler> logger
         )
         {
             _repositoryWrapper = repositoryWrapper;
@@ -22,17 +19,22 @@ namespace FileExplorerWebApp.Application.Mediator.Handlers
         }
 
         public async Task<bool> Handle(
-            FileCommands.DeleteFileCommand request,
+            FileCommands.RenameFileCommand request,
             CancellationToken cancellationToken
         )
         {
             try
             {
-                var file = await _repositoryWrapper.Files.FindByIdAsync(request.FileId);
+                var file = await _repositoryWrapper.Files.FindByIdAsync(request.FileDto.Id);
                 if (file == null)
+                {
                     return false;
+                }
 
-                _repositoryWrapper.Files.Delete(file);
+                file.Name = request.FileDto.Name;
+                file.LastModifiedDateTime = DateTime.UtcNow;
+
+                _repositoryWrapper.Files.Update(file);
                 await _repositoryWrapper.SaveAsync();
 
                 return true;
@@ -41,8 +43,8 @@ namespace FileExplorerWebApp.Application.Mediator.Handlers
             {
                 _logger.LogError(
                     ex,
-                    "Error occurred while deleting file with ID {FileId}",
-                    request.FileId
+                    "Error while renaming file with ID {FileId}",
+                    request.FileDto.Id
                 );
                 return false;
             }
