@@ -1,10 +1,11 @@
-﻿using FileExplorerWebApp.Application.Interfaces.Repositories;
+﻿using System.Reflection;
+using FileExplorerWebApp;
+using FileExplorerWebApp.Application.Interfaces.Repositories;
 using FileExplorerWebApp.Application.Mapper;
 using FileExplorerWebApp.Infrastructure.Persistence;
 using FileExplorerWebApp.Infrastructure.Repositories;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
-using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,6 +31,8 @@ builder.Services.AddMediatR(cfg =>
 {
     cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly());
 });
+
+builder.Services.Configure<FileUploadOptions>(builder.Configuration.GetSection("FileUpload"));
 
 builder.Services.AddRateLimiter(options =>
 {

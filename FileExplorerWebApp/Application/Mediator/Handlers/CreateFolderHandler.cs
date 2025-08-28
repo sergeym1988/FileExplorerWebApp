@@ -10,11 +10,17 @@ namespace FileExplorerWebApp.Application.Mediator.Handlers
     {
         private readonly IRepositoryWrapper _repositoryWrapper;
         private readonly IMapper _mapper;
+        private readonly ILogger<UploadFilesHandler> _logger;
 
-        public CreateFolderHandler(IRepositoryWrapper repositoryWrapper, IMapper mapper)
+        public CreateFolderHandler(
+            IRepositoryWrapper repositoryWrapper,
+            IMapper mapper,
+            ILogger<UploadFilesHandler> logger
+        )
         {
             _repositoryWrapper = repositoryWrapper;
             _mapper = mapper;
+            _logger = logger;
         }
 
         public async Task<bool> Handle(
@@ -22,18 +28,23 @@ namespace FileExplorerWebApp.Application.Mediator.Handlers
             CancellationToken cancellationToken
         )
         {
-            var folder = _mapper.Map<Folder>(request.FolderDto);
-            folder.ParentFolderId =
-                folder.ParentFolderId == Guid.Empty ? null : folder.ParentFolderId;
-
-            await _repositoryWrapper.Folders.CreateAsync(folder);
-
             try
             {
+                var folder = _mapper.Map<Folder>(request.FolderDto);
+                folder.ParentFolderId =
+                    folder.ParentFolderId == Guid.Empty ? null : folder.ParentFolderId;
+                folder.CreatedDateTime = DateTime.UtcNow;
+
+                await _repositoryWrapper.Folders.CreateAsync(folder);
+
                 await _repositoryWrapper.SaveAsync();
                 request.FolderDto.Id = folder.Id;
             }
-            catch (Exception ex) { }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while creating folder");
+                return false;
+            }
 
             return true;
         }

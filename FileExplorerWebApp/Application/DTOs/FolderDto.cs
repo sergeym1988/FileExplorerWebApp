@@ -1,7 +1,7 @@
 ﻿namespace FileExplorerWebApp.Application.DTOs
 {
     /// <summary>
-    ///
+    /// The folder dto.
     /// </summary>
     /// <seealso cref="FileExplorerWebApp.Application.DTOs.AuditDto" />
     public class FolderDto : AuditDto

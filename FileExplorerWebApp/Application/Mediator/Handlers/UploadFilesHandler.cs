@@ -1,42 +1,48 @@
 ﻿using AutoMapper;
+using FileExplorerWebApp;
 using FileExplorerWebApp.Application.DTOs;
 using FileExplorerWebApp.Application.Interfaces.Repositories;
 using MediatR;
+using Microsoft.Extensions.Options;
 using static FileExplorerWebApp.Application.Mediator.Commands.FileCommands;
-using File = FileExplorerWebApp.Domain.Entities.File;
 
 public class UploadFilesHandler : IRequestHandler<UploadFilesCommand, List<FileDto>>
 {
     private readonly IRepositoryWrapper _repositoryWrapper;
     private readonly IMapper _mapper;
     private readonly ILogger<UploadFilesHandler> _logger;
-
-    private static readonly HashSet<string> AllowedExtensions = new(
-        StringComparer.OrdinalIgnoreCase
-    )
-    {
-        ".txt",
-        ".png",
-        ".jpg",
-        ".jpeg",
-    };
-
-    private static readonly HashSet<string> AllowedMimeTypes = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "text/plain",
-        "image/png",
-        "image/jpeg",
-    };
+    private readonly FileUploadOptions _options;
+    private readonly HashSet<string> _allowedExtensions;
+    private readonly HashSet<string> _allowedMimeTypes;
+    private readonly long _maxFileSizeBytes;
 
     public UploadFilesHandler(
         IRepositoryWrapper repositoryWrapper,
         IMapper mapper,
-        ILogger<UploadFilesHandler> logger
+        ILogger<UploadFilesHandler> logger,
+        IOptions<FileUploadOptions> options
     )
     {
         _repositoryWrapper = repositoryWrapper;
         _mapper = mapper;
         _logger = logger;
+        _options = options.Value ?? new FileUploadOptions();
+
+        _allowedExtensions = new HashSet<string>(
+            (_options.AllowedExtensions ?? Array.Empty<string>()).Select(e =>
+                e.Trim().ToLowerInvariant()
+            ),
+            StringComparer.OrdinalIgnoreCase
+        );
+
+        _allowedMimeTypes = new HashSet<string>(
+            (_options.AllowedMimeTypes ?? Array.Empty<string>()).Select(m =>
+                m.Trim().ToLowerInvariant()
+            ),
+            StringComparer.OrdinalIgnoreCase
+        );
+
+        _maxFileSizeBytes = Math.Max(0, _options.MaxFileSizeMb) * 1024L * 1024L;
     }
 
     public async Task<List<FileDto>> Handle(
@@ -46,6 +52,19 @@ public class UploadFilesHandler : IRequestHandler<UploadFilesCommand, List<FileD
     {
         if (request.Files == null || request.Files.Count == 0)
             return new List<FileDto>();
+
+        var incomingFiles = request.Files;
+        if (incomingFiles.Count > _options.MaxFilesCount)
+        {
+            _logger.LogWarning(
+                "Upload request contains {Count} files but MaxFilesCount is {Max}. Only the first {Max} will be processed.",
+                incomingFiles.Count,
+                _options.MaxFilesCount,
+                _options.MaxFilesCount
+            );
+
+            incomingFiles = incomingFiles.Take(_options.MaxFilesCount).ToList();
+        }
 
         if (request.ParentId != Guid.Empty)
         {
@@ -57,33 +76,51 @@ public class UploadFilesHandler : IRequestHandler<UploadFilesCommand, List<FileD
             }
         }
 
-        var createdEntities = new List<File>();
+        var createdEntities = new List<FileExplorerWebApp.Domain.Entities.File>();
 
-        foreach (var formFile in request.Files)
+        foreach (var formFile in incomingFiles)
         {
-            if (formFile.Length == 0)
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (formFile == null || formFile.Length == 0)
                 continue;
 
-            var ext = Path.GetExtension(formFile.FileName ?? string.Empty);
-            var mime = formFile.ContentType ?? string.Empty;
+            var fileName = formFile.FileName ?? "file";
+            var ext = Path.GetExtension(fileName) ?? string.Empty;
+            var mime = (formFile.ContentType ?? string.Empty).Trim().ToLowerInvariant();
 
-            if (!string.IsNullOrEmpty(ext) && !AllowedExtensions.Contains(ext))
+            ext = ext.Trim().ToLowerInvariant();
+            if (!ext.StartsWith(".") && ext.Length > 0)
+                ext = "." + ext;
+
+            if (!string.IsNullOrEmpty(ext) && !_allowedExtensions.Contains(ext))
             {
                 _logger.LogWarning(
-                    "File {FileName} has not allowed extension {Ext}",
-                    formFile.FileName,
+                    "File {FileName} has disallowed extension {Ext}. Skipping.",
+                    fileName,
                     ext
                 );
                 continue;
             }
 
-            if (!string.IsNullOrEmpty(mime) && !AllowedMimeTypes.Contains(mime))
+            if (!string.IsNullOrEmpty(mime) && !_allowedMimeTypes.Contains(mime))
             {
                 _logger.LogWarning(
-                    "File {FileName} has not allowed mime {Mime}",
-                    formFile.FileName,
+                    "File {FileName} has disallowed mime type {Mime}. It will still be processed.",
+                    fileName,
                     mime
                 );
+            }
+
+            if (_maxFileSizeBytes > 0 && formFile.Length > _maxFileSizeBytes)
+            {
+                _logger.LogWarning(
+                    "File {FileName} is too large ({Size} bytes). Max allowed is {MaxBytes}. Skipping.",
+                    fileName,
+                    formFile.Length,
+                    _maxFileSizeBytes
+                );
+                continue;
             }
 
             byte[] content;
@@ -93,19 +130,24 @@ public class UploadFilesHandler : IRequestHandler<UploadFilesCommand, List<FileD
                 content = ms.ToArray();
             }
 
-            var entity = new File
+            var entity = new FileExplorerWebApp.Domain.Entities.File
             {
                 Id = Guid.NewGuid(),
-                Name = Path.GetFileName(formFile.FileName ?? "file"),
+                Name = Path.GetFileName(fileName),
                 Content = content,
-                Mime = mime ?? "application/octet-stream",
-                Size = formFile.Length,
+                Mime = string.IsNullOrEmpty(mime) ? "application/octet-stream" : mime,
                 FolderId = request.ParentId == Guid.Empty ? null : request.ParentId,
                 CreatedDateTime = DateTime.UtcNow,
             };
 
             _repositoryWrapper.Files.Create(entity);
             createdEntities.Add(entity);
+        }
+
+        if (createdEntities.Count == 0)
+        {
+            _logger.LogInformation("No files were created for parent {ParentId}", request.ParentId);
+            return new List<FileDto>();
         }
 
         try
@@ -122,20 +164,12 @@ public class UploadFilesHandler : IRequestHandler<UploadFilesCommand, List<FileD
             throw;
         }
 
-        //var dtos = createdEntities.Select(e => new FileDto
-        //{
-        //    Id = e.Id,
-        //    Name = e.Name,
-        //    Mime = e.Mime,
-        //    Size = e.Size,
-        //    FolderId = e.FolderId,
-        //    CreatedDateTime = (e as Audit)?.CreatedDateTime ?? null, // если Audit содержит
-        //    LastModifiedDateTime = (e as Audit)?.LastModifiedDateTime ?? null
-        //}).ToList();
-
-        // Если у тебя есть AutoMapper конфигурация, можно заменить ручной маппинг:
         var dtos = _mapper.Map<List<FileDto>>(createdEntities);
-
+        _logger.LogInformation(
+            "Uploaded and saved {Count} files for parent {ParentId}",
+            dtos.Count,
+            request.ParentId
+        );
         return dtos;
     }
 }

@@ -4,6 +4,7 @@
       <th style="width:40%">Name</th>
       <th style="width:20%">Type</th>
       <th style="width:20%">Size</th>
+      <th style="width:10%">Preview</th>
     </tr>
   </ng-template>
 
@@ -13,8 +14,20 @@
         <i [ngClass]="getIcon(item)" class="mr-2"></i>
         {{ item.name }}
       </td>
+
       <td>{{ getTypeLabel(item) }}</td>
       <td>{{ getSizeLabel(item) }}</td>
+      <td class="preview-cell">
+        <!-- Image preview -->
+        <img
+          *ngIf="isFile(item) && item.preview && item.previewKind !== PreviewKind.None && item.previewKind === PreviewKind.Image"
+          [src]="getPreviewImageSrc(item)" [alt]="item.name + ' preview'" class="file-preview" />
+
+        <!-- Text preview -->
+        <div *ngIf="isFile(item) && item.preview && (item.previewKind === PreviewKind.Text)" class="text-preview">
+          {{ getPreviewText(item) }}
+        </div>
+      </td>
     </tr>
   </ng-template>
 </p-table>

@@ -11,10 +11,15 @@ namespace FileExplorerWebApp.Application.Mediator.Handlers
         : IRequestHandler<FolderQueries.GetRootFoldersQuery, List<FolderDto>>
     {
         private readonly IRepositoryWrapper _repositoryWrapper;
+        private readonly ILogger<GetRootFoldersHandler> _logger;
 
-        public GetRootFoldersHandler(IRepositoryWrapper repositoryWrapper)
+        public GetRootFoldersHandler(
+            IRepositoryWrapper repositoryWrapper,
+            ILogger<GetRootFoldersHandler> logger
+        )
         {
             _repositoryWrapper = repositoryWrapper;
+            _logger = logger;
         }
 
         public async Task<List<FolderDto>> Handle(
@@ -22,71 +27,80 @@ namespace FileExplorerWebApp.Application.Mediator.Handlers
             CancellationToken cancellationToken
         )
         {
-            var rootFolders = await _repositoryWrapper
-                .Folders.FindByCondition(f => f.ParentFolderId == null)
-                .ToListAsync(cancellationToken);
-
-            var folderDtos = new List<FolderDto>();
-            if (rootFolders.Any())
+            try
             {
-                var rootFolderIds = rootFolders.Select(f => f.Id).ToList();
-
-                var subfolderCounts = await _repositoryWrapper
-                    .Folders.FindByCondition(f =>
-                        f.ParentFolderId != null && rootFolderIds.Contains(f.ParentFolderId.Value)
-                    )
-                    .GroupBy(f => f.ParentFolderId)
-                    .Select(g => new { ParentId = g.Key, Count = g.Count() })
+                var rootFolders = await _repositoryWrapper
+                    .Folders.FindByCondition(f => f.ParentFolderId == null)
                     .ToListAsync(cancellationToken);
 
-                var fileCounts = await _repositoryWrapper
-                    .Files.FindByCondition(f =>
-                        f.FolderId != null && rootFolderIds.Contains(f.FolderId.Value)
-                    )
-                    .GroupBy(f => f.FolderId)
-                    .Select(g => new { ParentId = g.Key, Count = g.Count() })
-                    .ToListAsync(cancellationToken);
+                var folderDtos = new List<FolderDto>();
 
-                folderDtos = rootFolders
-                    .Select(f => new FolderDto
-                    {
-                        Id = f.Id,
-                        Name = f.Name,
-                        ParentFolderId = f.ParentFolderId,
-                        HasChildren =
-                            subfolderCounts.Any(x => x.ParentId == f.Id)
-                            || fileCounts.Any(x => x.ParentId == f.Id),
-                        CreatedDateTime = (f as Audit)?.CreatedDateTime,
-                        LastModifiedDateTime = (f as Audit)?.LastModifiedDateTime,
-                    })
-                    .ToList();
-            }
-
-            var rootFiles = await _repositoryWrapper
-                .Files.FindByCondition(fi => fi.FolderId == null)
-                .Select(fi => new FileDto
+                if (rootFolders.Any())
                 {
-                    Id = fi.Id,
-                    Name = fi.Name,
-                    Mime = fi.Mime,
-                    Size = fi.Size,
-                    FolderId = fi.FolderId,
-                    CreatedDateTime = fi.CreatedDateTime,
-                    LastModifiedDateTime = fi.LastModifiedDateTime,
-                })
-                .ToListAsync(cancellationToken);
+                    var rootFolderIds = rootFolders.Select(f => f.Id).ToList();
 
-            var root = new FolderDto
+                    var subfolderCounts = await _repositoryWrapper
+                        .Folders.FindByCondition(f =>
+                            f.ParentFolderId != null
+                            && rootFolderIds.Contains(f.ParentFolderId.Value)
+                        )
+                        .GroupBy(f => f.ParentFolderId)
+                        .Select(g => new { ParentId = g.Key, Count = g.Count() })
+                        .ToListAsync(cancellationToken);
+
+                    var fileCounts = await _repositoryWrapper
+                        .Files.FindByCondition(f =>
+                            f.FolderId != null && rootFolderIds.Contains(f.FolderId.Value)
+                        )
+                        .GroupBy(f => f.FolderId)
+                        .Select(g => new { ParentId = g.Key, Count = g.Count() })
+                        .ToListAsync(cancellationToken);
+
+                    folderDtos = rootFolders
+                        .Select(f => new FolderDto
+                        {
+                            Id = f.Id,
+                            Name = f.Name,
+                            ParentFolderId = f.ParentFolderId,
+                            HasChildren =
+                                subfolderCounts.Any(x => x.ParentId == f.Id)
+                                || fileCounts.Any(x => x.ParentId == f.Id),
+                            CreatedDateTime = (f as Audit)?.CreatedDateTime,
+                            LastModifiedDateTime = (f as Audit)?.LastModifiedDateTime,
+                        })
+                        .ToList();
+                }
+
+                var rootFiles = await _repositoryWrapper
+                    .Files.FindByCondition(fi => fi.FolderId == null)
+                    .Select(fi => new FileDto
+                    {
+                        Id = fi.Id,
+                        Name = fi.Name,
+                        Mime = fi.Mime,
+                        FolderId = fi.FolderId,
+                        CreatedDateTime = fi.CreatedDateTime,
+                        LastModifiedDateTime = fi.LastModifiedDateTime,
+                    })
+                    .ToListAsync(cancellationToken);
+
+                var root = new FolderDto
+                {
+                    Id = Guid.Empty,
+                    Name = "Root",
+                    ParentFolderId = null,
+                    HasChildren = (folderDtos?.Any() == true) || (rootFiles?.Any() == true),
+                    SubFolders = folderDtos,
+                    Files = rootFiles,
+                };
+
+                return new List<FolderDto> { root };
+            }
+            catch (Exception ex)
             {
-                Id = Guid.Empty,
-                Name = "Root",
-                ParentFolderId = null,
-                HasChildren = (folderDtos?.Any() == true) || (rootFiles?.Any() == true),
-                SubFolders = folderDtos,
-                Files = rootFiles,
-            };
-
-            return new List<FolderDto> { root };
+                _logger.LogError(ex, "Error while retrieving root folders");
+                return new List<FolderDto>();
+            }
         }
     }
 }

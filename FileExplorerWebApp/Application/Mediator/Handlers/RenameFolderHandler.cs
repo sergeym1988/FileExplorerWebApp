@@ -4,14 +4,18 @@ using MediatR;
 
 namespace FileExplorerWebApp.Application.Mediator.Handlers
 {
-    public class RenameFolderHandler
-        : IRequestHandler<FolderCommands.RenameFolderCommand, bool>
+    public class RenameFolderHandler : IRequestHandler<FolderCommands.RenameFolderCommand, bool>
     {
         private readonly IRepositoryWrapper _repositoryWrapper;
+        private readonly ILogger<RenameFolderHandler> _logger;
 
-        public RenameFolderHandler(IRepositoryWrapper repositoryWrapper)
+        public RenameFolderHandler(
+            IRepositoryWrapper repositoryWrapper,
+            ILogger<RenameFolderHandler> logger
+        )
         {
             _repositoryWrapper = repositoryWrapper;
+            _logger = logger;
         }
 
         public async Task<bool> Handle(
@@ -19,17 +23,32 @@ namespace FileExplorerWebApp.Application.Mediator.Handlers
             CancellationToken cancellationToken
         )
         {
-            var folder = await _repositoryWrapper.Folders.FindByIdAsync(request.FolderDto.Id);
-            if (folder == null)
+            try
+            {
+                var folder = await _repositoryWrapper.Folders.FindByIdAsync(request.FolderDto.Id);
+                if (folder == null)
+                {
+                    return false;
+                }
+
+                folder.Name = request.FolderDto.Name;
+                folder.ParentFolderId = request.FolderDto.ParentFolderId;
+                folder.LastModifiedDateTime = DateTime.UtcNow;
+
+                _repositoryWrapper.Folders.Update(folder);
+                await _repositoryWrapper.SaveAsync();
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Error while renaming folder with ID {FolderId}",
+                    request.FolderDto.Id
+                );
                 return false;
-
-            folder.Name = request.FolderDto.Name;
-            folder.ParentFolderId = request.FolderDto.ParentFolderId;
-
-            _repositoryWrapper.Folders.Update(folder);
-            await _repositoryWrapper.SaveAsync();
-
-            return true;
+            }
         }
     }
 }

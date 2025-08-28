@@ -3,7 +3,6 @@ using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using static FileExplorerWebApp.Application.Mediator.Commands.FileCommands;
-using static FileExplorerWebApp.Application.Mediator.Queries.FileQueries;
 
 namespace FileExplorerWebApp.Controllers
 {
@@ -17,50 +16,6 @@ namespace FileExplorerWebApp.Controllers
     {
         public FileController(ILogger<FileController> logger, IMediator mediator)
             : base(logger, mediator) { }
-
-        /// <summary>
-        /// Get list of files inside a folder.
-        /// </summary>
-        [HttpGet("folder/{folderId:guid}")]
-        public async Task<IActionResult> GetFilesByFolder(Guid folderId)
-        {
-            try
-            {
-                var files = await _mediator.Send(new GetFilesByFolderQuery(folderId));
-                return Ok(files);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(
-                    ex,
-                    "Error while retrieving files for folder {FolderId}",
-                    folderId
-                );
-            }
-
-            return BadRequest();
-        }
-
-        /// <summary>
-        /// Get file metadata by id.
-        /// </summary>
-        [HttpGet("{id:guid}")]
-        public async Task<IActionResult> GetFileById(Guid id)
-        {
-            try
-            {
-                var file = await _mediator.Send(new GetFileByIdQuery(id));
-                if (file != null)
-                    return Ok(file);
-                return NotFound();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error while retrieving file {FileId}", id);
-            }
-
-            return BadRequest();
-        }
 
         /// <summary>
         /// Upload one or more files to a folder.

@@ -49,9 +49,6 @@ publish/
 # Azure Functions
 local.settings.json
 
-# Entity Framework
-Migrations/
-
 # Temporary files
 *.tmp
 *.temp

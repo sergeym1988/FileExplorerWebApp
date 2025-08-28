@@ -1,16 +1,20 @@
 ﻿using FileExplorerWebApp.Application.Interfaces.Repositories;
 using FileExplorerWebApp.Application.Mediator.Commands;
-using MediatR;
 
 namespace FileExplorerWebApp.Application.Mediator.Handlers
 {
-    public class DeleteFileHandler : IRequestHandler<FileCommands.DeleteFileCommand, bool>
+    public class DeleteFileHandler
     {
         private readonly IRepositoryWrapper _repositoryWrapper;
+        private readonly ILogger<DeleteFileHandler> _logger;
 
-        public DeleteFileHandler(IRepositoryWrapper repositoryWrapper)
+        public DeleteFileHandler(
+            IRepositoryWrapper repositoryWrapper,
+            ILogger<DeleteFileHandler> logger
+        )
         {
             _repositoryWrapper = repositoryWrapper;
+            _logger = logger;
         }
 
         public async Task<bool> Handle(
@@ -18,14 +22,27 @@ namespace FileExplorerWebApp.Application.Mediator.Handlers
             CancellationToken cancellationToken
         )
         {
-            var file = await _repositoryWrapper.Files.FindByIdAsync(request.FileId);
-            if (file == null)
+            try
+            {
+                var file = await _repositoryWrapper.Files.FindByIdAsync(request.FileId);
+                if (file == null)
+                    return false;
+
+                _repositoryWrapper.Files.Delete(file);
+
+                await _repositoryWrapper.SaveAsync();
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Error occurred while deleting file with ID {FileId}",
+                    request.FileId
+                );
                 return false;
-
-            _repositoryWrapper.Files.Delete(file);
-            await _repositoryWrapper.SaveAsync();
-
-            return true;
+            }
         }
     }
 }

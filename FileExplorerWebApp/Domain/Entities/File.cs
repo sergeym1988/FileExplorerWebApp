@@ -14,20 +14,20 @@
         public Guid Id { get; set; }
 
         /// <summary>
+        /// Gets or sets the folder identifier.
+        /// </summary>
+        /// <value>
+        /// The folder identifier.
+        /// </value>
+        public Guid? FolderId { get; set; }
+
+        /// <summary>
         /// Gets or sets the name.
         /// </summary>
         /// <value>
         /// The name.
         /// </value>
         public required string Name { get; set; }
-
-        /// <summary>
-        /// Gets or sets the file content.
-        /// </summary>
-        /// <value>
-        /// The binary content of the file.
-        /// </value>
-        public required byte[] Content { get; set; }
 
         /// <summary>
         /// Gets or sets the extension.
@@ -38,20 +38,12 @@
         public required string Mime { get; set; }
 
         /// <summary>
-        /// Gets or sets the size.
+        /// Gets or sets the file content.
         /// </summary>
         /// <value>
-        /// The size.
+        /// The binary content of the file.
         /// </value>
-        public long Size { get; set; }
-
-        /// <summary>
-        /// Gets or sets the folder identifier.
-        /// </summary>
-        /// <value>
-        /// The folder identifier.
-        /// </value>
-        public Guid? FolderId { get; set; }
+        public required byte[] Content { get; set; }
 
         /// <summary>
         /// Gets or sets the folder.

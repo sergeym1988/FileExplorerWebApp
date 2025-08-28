@@ -5,7 +5,7 @@ export interface Folder {
   subFolders?: Folder[];
   files?: AppFile[];
   isExpanded?: boolean;
-  hasChildren?: boolean
+  hasChildren?: boolean;
 }
 
 export interface AppFile {
@@ -15,6 +15,15 @@ export interface AppFile {
   size?: number;
   folderId?: string;
   content?: ArrayBuffer | Blob | string;
+  preview?: ArrayBuffer | Blob | string;
+  previewMime?: string;
+  previewKind?: PreviewKind;
+}
+
+export enum PreviewKind {
+  None = 0,
+  Image = 1,
+  Text = 2
 }
 
 export enum DrawerMode {

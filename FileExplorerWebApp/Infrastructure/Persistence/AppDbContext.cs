@@ -43,7 +43,6 @@ namespace FileExplorerWebApp.Infrastructure.Persistence
                 entity.Property(f => f.Name).IsRequired();
                 entity.Property(f => f.Mime).IsRequired();
                 entity.Property(f => f.Content).IsRequired();
-                entity.Property(f => f.Size).IsRequired();
 
                 entity
                     .HasOne(f => f.Folder)
