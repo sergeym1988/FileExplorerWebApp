@@ -1,6 +1,6 @@
 <p-splitter style="height:100vh;" [panelSizes]="[30,70]">
   <ng-template pTemplate>
-    <explorer-tree (getFolderByIdEvent)="onFolderSelectedFromTree($event)"
+    <explorer-tree [selectedFolderId]="selectedFolderId" (getFolderByIdEvent)="onFolderSelectedFromTree($event)"
       (addFolderEvent)="openAddFolderDrawer($event)" (renameFolderEvent)="openRenameFolderDrawer($event)"
       (deleteFolderEvent)="openConfirmationDialog($event)" (uploadFilesEvent)="openUploadDialogFor($event)">
     </explorer-tree>

@@ -1,4 +1,4 @@
-import { Component, computed, EventEmitter, Output, ChangeDetectionStrategy } from '@angular/core';
+import { Component, computed, EventEmitter, Output, ChangeDetectionStrategy, Input } from '@angular/core';
 import { TreeModule } from 'primeng/tree';
 import { ButtonModule } from 'primeng/button';
 import { TreeNode } from 'primeng/api';
@@ -15,6 +15,7 @@ import { AppFile, Folder } from '../../models/models';
   templateUrl: 'explorer-tree.component.html'
 })
 export class ExplorerTreeComponent {
+  @Input() selectedFolderId: string | null = null;
   @Output() fileSelectedEvent = new EventEmitter<{ fileId: string, parentId?: string, file?: AppFile }>();
   @Output() addFolderEvent = new EventEmitter<string>();
   @Output() renameFolderEvent = new EventEmitter<string>();

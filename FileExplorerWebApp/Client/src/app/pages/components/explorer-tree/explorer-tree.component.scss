@@ -21,6 +21,12 @@
   }
 }
 
+.active-folder {
+  background: rgba(16, 185, 129, 0.12);
+  /* emerald-500 at 12% */
+  outline: 1px solid rgba(16, 185, 129, 0.25);
+}
+
 .node-label {
   flex: 1 1 auto;
   min-width: 0;

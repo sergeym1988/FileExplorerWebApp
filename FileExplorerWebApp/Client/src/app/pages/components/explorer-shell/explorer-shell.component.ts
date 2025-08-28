@@ -201,6 +201,7 @@ export class ExplorerShellComponent {
   onFolderSelectedFromFiles(folderId: string) {
     this.selectedFileId = null;
     this.selectedFolderId = folderId;
+    this.tree?.expandFolderById(folderId);
   }
 
   private uploadToServer(parentId: string, files: globalThis.File[]) {
