@@ -1,5 +1,5 @@
 export interface Folder {
-  id?: string;
+  id: string;
   name: string;
   parentFolderId?: string;
   subFolders?: Folder[];
@@ -13,13 +13,12 @@ export interface AppFile {
   name: string;
   mime?: string;
   size?: number;
-  folderId?: string;
+  folderId: string;
   content?: ArrayBuffer | Blob | string;
   preview?: ArrayBuffer | Blob | string;
   previewMime?: string;
   previewKind?: PreviewKind;
 }
-
 export enum PreviewKind {
   None = 0,
   Image = 1,

@@ -78,7 +78,7 @@ export class ExplorerShellComponent {
     if (!name) return;
 
     if (this.drawerMode === DrawerMode.Add && this.selectedFolderId) {
-      const newFolder: Folder = { name, parentFolderId: this.selectedFolderId };
+      const newFolder: Partial<Folder> = { name, parentFolderId: this.selectedFolderId };
       this.folderService.createFolder(newFolder).subscribe({
         next: () => {
           // auto-expand parent to reveal the new folder
@@ -90,7 +90,7 @@ export class ExplorerShellComponent {
     }
 
     if (this.drawerMode === DrawerMode.RenameFolder && this.selectedFolderId) {
-      const folder: Folder = { id: this.selectedFolderId, name };
+      const folder: Folder = { id: this.selectedFolderId, name } as Folder;
       this.folderService.renameFolder(folder).subscribe({
         next: () => this.closeDrawer(),
         error: err => console.error('Error while renaming folder:', err)
@@ -98,7 +98,7 @@ export class ExplorerShellComponent {
     }
 
     if (this.drawerMode === DrawerMode.RenameFile && this.selectedFileId) {
-      const file: AppFile = { id: this.selectedFileId, name };
+      const file: AppFile = { id: this.selectedFileId, name, folderId: this.selectedFolderId! } as AppFile;
       this.fileService.renameFile(file).subscribe({
         next: () => this.closeDrawer(),
         error: err => console.error('Error while renaming file:', err)

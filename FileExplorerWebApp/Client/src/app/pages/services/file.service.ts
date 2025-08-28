@@ -11,14 +11,6 @@ export class FileService {
 
   constructor(private http: HttpClient, private folderService: FolderService) { }
 
-  getFilesByFolderId(parentId: string): Observable<AppFile[]> {
-    return this.http.get<AppFile[]>(`${this.apiUrl}/folder/${parentId}`).pipe(
-      tap(files => {
-        this.files.set(files || []);
-      })
-    );
-  }
-
   uploadFiles(parentId: string, files: globalThis.File[]): Observable<AppFile[]> {
     const formData = new FormData();
     formData.append('parentId', parentId);
@@ -55,9 +47,6 @@ export class FileService {
         this.folderService.renameFileInFolder(file);
       })
     );
-  }
-  previewFile(fileId: string): Observable<Blob> {
-    return this.http.get(`${this.apiUrl}/preview/${fileId}`, { responseType: 'blob' });
   }
 
   downloadFile(fileId: string): Observable<Blob> {
