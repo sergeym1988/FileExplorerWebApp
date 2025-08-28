@@ -1,3 +1,7 @@
+<div class="files-toolbar" *ngIf="canGoUp()">
+  <button pButton icon="pi pi-arrow-up" class="p-button-text" (click)="goUp()" label="Up"></button>
+</div>
+
 <p-table *ngIf="folderContent.length > 0" [value]="folderContent" dataKey="id">
   <ng-template pTemplate="header">
     <tr>

@@ -20,10 +20,11 @@ export class ExplorerFilesComponent implements OnDestroy {
   private _folderId: string | null = null;
   // Expose enum to template
   public PreviewKind = PreviewKind;
+  currentFolderParentId: string | null = null;
   @Input()
   set folderId(value: string | null) {
     this._folderId = value;
-    if (value) {    
+    if (value) {
       this.loadFolderContent(value);
     } else {
       this.clearPreviewCacheForAll();
@@ -45,12 +46,13 @@ export class ExplorerFilesComponent implements OnDestroy {
   constructor(
     private folderService: FolderService,
     private sanitizer: DomSanitizer
-  ) {   
+  ) {
     effect(() => {
       const currentFolderId = this._folderId;
       const folders = this.folderService.folders();
       if (!currentFolderId) {
         this.folderContent = [];
+        this.currentFolderParentId = null;
         return;
       }
       const folder = this.findFolderById(folders, currentFolderId);
@@ -58,6 +60,8 @@ export class ExplorerFilesComponent implements OnDestroy {
         const subFolders = Array.isArray(folder.subFolders) ? folder.subFolders : [];
         const files = Array.isArray(folder.files) ? folder.files : [];
         this.folderContent = [...subFolders, ...files];
+        const computedParent = this.findParentIdOfFolder(folders, currentFolderId);
+        this.currentFolderParentId = computedParent ?? null;
       }
     });
   }
@@ -75,7 +79,7 @@ export class ExplorerFilesComponent implements OnDestroy {
   }
 
   private loadFolderContent(folderId: string) {
-    this.clearPreviewCacheForAll(); 
+    this.clearPreviewCacheForAll();
     this.folderService.loadFolderChildren(folderId).subscribe({
       next: () => { /* state updated through signal effect */ },
       error: err => {
@@ -93,6 +97,32 @@ export class ExplorerFilesComponent implements OnDestroy {
       if (found) return found;
     }
     return undefined;
+  }
+
+  private findParentIdOfFolder(folders: Folder[] | undefined, childId: string | null | undefined): string | undefined {
+    if (!folders || !childId) return undefined;
+    for (const f of folders) {
+      if (Array.isArray(f.subFolders) && f.subFolders.some(sf => sf.id === childId)) {
+        return f.id;
+      }
+      const found = this.findParentIdOfFolder(f.subFolders, childId);
+      if (found) return found;
+    }
+    return undefined;
+  }
+
+  canGoUp(): boolean {
+    return !!this.currentFolderParentId;
+  }
+
+  goUp() {
+    const parentId = this.currentFolderParentId;
+    if (!parentId) return;
+    // emit to shell so selected folder syncs
+    this.openFolder.emit(parentId);
+    // also optimistically load here for immediate UI response
+    this._folderId = parentId;
+    this.loadFolderContent(parentId);
   }
 
   // ---- helpers / type guards ----
@@ -125,6 +155,9 @@ export class ExplorerFilesComponent implements OnDestroy {
     if (this.isFolder(item)) {
       const fid = item.id;
       if (!fid) return;
+      // set state early so the Up button appears immediately
+      this.currentFolderParentId = item.parentFolderId ?? null;
+      this._folderId = fid;
       this.loadFolderContent(fid);
       this.openFolder.emit(fid);
     } else if (this.isFile(item)) {
