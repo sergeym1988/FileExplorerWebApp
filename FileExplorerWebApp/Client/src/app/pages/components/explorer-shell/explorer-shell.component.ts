@@ -1,4 +1,4 @@
-import { Component, signal, ViewChild } from '@angular/core';
+import { Component, signal, ViewChild, OnInit, ChangeDetectorRef } from '@angular/core';
 import { SplitterModule } from 'primeng/splitter';
 import { DrawerModule } from 'primeng/drawer';
 import { ButtonModule } from 'primeng/button';
@@ -33,7 +33,7 @@ import { finalize } from 'rxjs';
   providers: [ConfirmationService, MessageService],
   templateUrl: 'explorer-shell.component.html',
 })
-export class ExplorerShellComponent {
+export class ExplorerShellComponent implements OnInit {
 
   @ViewChild('uploadDialog') uploadDialog!: UploadDialogComponent;
   @ViewChild(ExplorerTreeComponent) tree!: ExplorerTreeComponent;
@@ -52,8 +52,24 @@ export class ExplorerShellComponent {
     private folderService: FolderService,
     private fileService: FileService,
     private confirmationService: ConfirmationService,
-    private messageService: MessageService
+    private messageService: MessageService,
+    private cdr: ChangeDetectorRef
   ) { }
+
+  ngOnInit() {
+    this.folderService.loadRootFolders().subscribe({
+      next: (rootFolders) => {
+        if (rootFolders && rootFolders.length > 0) {
+          const firstRootFolder = rootFolders[0];
+          Promise.resolve().then(() => {
+            this.selectedFolderId = firstRootFolder.id;
+            this.cdr.detectChanges();
+          });
+        }
+      },
+      error: (err) => console.error('Error loading root folders:', err)
+    });
+  }
 
   openAddFolderDrawer(folderId: string) {
     this.drawerMode = DrawerMode.Add;
@@ -194,6 +210,7 @@ export class ExplorerShellComponent {
   onFolderSelectedFromTree(folderId: string) {
     this.selectedFileId = null;
     this.selectedFolderId = folderId;
+    this.folderService.loadFolderChildren(folderId).subscribe();
   }
 
   onFolderSelectedFromFiles(folderId: string) {

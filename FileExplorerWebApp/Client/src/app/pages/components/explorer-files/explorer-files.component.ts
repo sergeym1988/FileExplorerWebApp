@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnDestroy, effect, computed } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnDestroy, OnInit, effect, computed } from '@angular/core';
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { CommonModule } from '@angular/common';
@@ -15,7 +15,7 @@ type FolderOrFile = Folder | AppFile;
   templateUrl: 'explorer-files.component.html',
   styleUrls: ['explorer-files.component.scss']
 })
-export class ExplorerFilesComponent implements OnDestroy {
+export class ExplorerFilesComponent implements OnDestroy, OnInit {
 
   private _folderId: string | null = null;
   public PreviewKind = PreviewKind;
@@ -28,11 +28,21 @@ export class ExplorerFilesComponent implements OnDestroy {
     const files = Array.isArray(folder.files) ? folder.files : [];
     return [...subFolders, ...files] as (Folder | AppFile)[];
   });
+
   @Input()
   set folderId(value: string | null) {
     this._folderId = value;
     if (value) {
-      this.loadFolderContent(value);
+      Promise.resolve().then(() => {
+        const folder = this.findFolderById(this.folderService.folders(), value);
+        if (!folder || !folder.subFolders || !folder.files) {
+          const rootFolders = this.folderService.folders();
+          const isRootFolder = rootFolders && rootFolders.some(rf => rf.id === value);
+          if (!isRootFolder) {
+            this.loadFolderContent(value);
+          }
+        }
+      });
     } else {
       this.clearPreviewCacheForAll();
     }
@@ -58,8 +68,8 @@ export class ExplorerFilesComponent implements OnDestroy {
     });
   }
 
-  ngOnDestroy(): void {
-    this.clearPreviewCacheForAll();
+  ngOnInit() {
+
   }
 
   onRenameFileClicked(file: AppFile, ev?: MouseEvent) {
@@ -74,6 +84,38 @@ export class ExplorerFilesComponent implements OnDestroy {
     this.deleteFileEvent.emit(file);
   }
 
+  private loadFolderContent(folderId: string) {
+    this.clearPreviewCacheForAll();
+    this.folderService.loadFolderChildren(folderId).subscribe({
+      next: () => { },
+      error: err => {
+        console.error(err);
+      }
+    });
+  }
+
+  private findFolderById(folders: Folder[] | undefined, id: string | null | undefined): Folder | undefined {
+    if (!folders || !id) return undefined;
+    for (const f of folders) {
+      if (f.id === id) return f;
+      const found = this.findFolderById(f.subFolders, id);
+      if (found) return found;
+    }
+    return undefined;
+  }
+
+  private findParentIdOfFolder(folders: Folder[] | undefined, childId: string | null | undefined): string | undefined {
+    if (!folders || !childId) return undefined;
+    for (const f of folders) {
+      if (Array.isArray(f.subFolders) && f.subFolders.some(sf => sf.id === childId)) {
+        return f.id;
+      }
+      const found = this.findParentIdOfFolder(f.subFolders, childId);
+      if (found) return found;
+    }
+    return undefined;
+  }
+
   canGoUp(): boolean {
     return !!this.currentFolderParentId();
   }
@@ -82,8 +124,10 @@ export class ExplorerFilesComponent implements OnDestroy {
     const parentId = this.currentFolderParentId();
     if (!parentId) return;
     this.openFolder.emit(parentId);
-    this._folderId = parentId;
-    this.loadFolderContent(parentId);
+    Promise.resolve().then(() => {
+      this._folderId = parentId;
+      this.loadFolderContent(parentId);
+    });
   }
 
   isFile(item: any): item is AppFile {
@@ -114,9 +158,11 @@ export class ExplorerFilesComponent implements OnDestroy {
     if (this.isFolder(item)) {
       const fid = item.id;
       if (!fid) return;
-      this._folderId = fid;
-      this.loadFolderContent(fid);
-      this.openFolder.emit(fid);
+      Promise.resolve().then(() => {
+        this._folderId = fid;
+        this.loadFolderContent(fid);
+        this.openFolder.emit(fid);
+      });
     } else if (this.isFile(item)) {
       if (item.id) this.openFile.emit(item.id);
     }
@@ -136,7 +182,6 @@ export class ExplorerFilesComponent implements OnDestroy {
     if (typeof file.preview === 'string') {
       const base64 = file.preview as string;
       if ((file.previewMime ?? '').startsWith('image/')) {
-
         const mime = file.previewMime ?? 'image/jpeg';
         const dataUri = `data:${mime};base64,${base64}`;
         safe = this.sanitizer.bypassSecurityTrustUrl(dataUri);
@@ -147,7 +192,6 @@ export class ExplorerFilesComponent implements OnDestroy {
       this.previewUrlCache.set(file.id ?? '', null);
       return null;
     }
-
     if (Array.isArray(file.preview)) {
       try {
         const uint8 = new Uint8Array(file.preview as number[]);
@@ -225,42 +269,13 @@ export class ExplorerFilesComponent implements OnDestroy {
   }
 
   private clearPreviewCacheForAll() {
-
     for (const [id, cached] of this.previewUrlCache) {
       if (!cached) continue;
     }
     this.previewUrlCache.clear();
   }
 
-  private loadFolderContent(folderId: string) {
+  ngOnDestroy(): void {
     this.clearPreviewCacheForAll();
-    this.folderService.loadFolderChildren(folderId).subscribe({
-      next: () => { },
-      error: err => {
-        console.error(err);
-      }
-    });
-  }
-
-  private findFolderById(folders: Folder[] | undefined, id: string | null | undefined): Folder | undefined {
-    if (!folders || !id) return undefined;
-    for (const f of folders) {
-      if (f.id === id) return f;
-      const found = this.findFolderById(f.subFolders, id);
-      if (found) return found;
-    }
-    return undefined;
-  }
-
-  private findParentIdOfFolder(folders: Folder[] | undefined, childId: string | null | undefined): string | undefined {
-    if (!folders || !childId) return undefined;
-    for (const f of folders) {
-      if (Array.isArray(f.subFolders) && f.subFolders.some(sf => sf.id === childId)) {
-        return f.id;
-      }
-      const found = this.findParentIdOfFolder(f.subFolders, childId);
-      if (found) return found;
-    }
-    return undefined;
   }
 }

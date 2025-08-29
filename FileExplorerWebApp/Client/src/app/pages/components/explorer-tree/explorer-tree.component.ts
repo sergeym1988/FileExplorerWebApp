@@ -1,4 +1,4 @@
-import { Component, computed, EventEmitter, Output, ChangeDetectionStrategy, Input } from '@angular/core';
+import { Component, computed, EventEmitter, Output, ChangeDetectionStrategy, Input, effect } from '@angular/core';
 import { TreeModule } from 'primeng/tree';
 import { ButtonModule } from 'primeng/button';
 import { TreeNode } from 'primeng/api';
@@ -31,10 +31,19 @@ export class ExplorerTreeComponent {
 
   private expandedKeys = new Set<string>();
 
-  constructor(private folderService: FolderService) { }
+  constructor(private folderService: FolderService) {
+    effect(() => {
+      const rootFolders = this.folderService.folders();
+      if (rootFolders && rootFolders.length > 0) {
+        const firstRootFolder = rootFolders[0];
+        Promise.resolve().then(() => {
+          this.expandedKeys.add(firstRootFolder.id);
+        });
+      }
+    });
+  }
 
   ngOnInit() {
-    Promise.resolve().then(() => this.folderService.loadRootFolders().subscribe());
   }
 
   addFolder(node: TreeNode) { this.addFolderEvent.emit(node.key as string); }
@@ -85,7 +94,6 @@ export class ExplorerTreeComponent {
   expandFolderById(folderId: string) {
     if (!folderId) return;
     this.expandedKeys.add(folderId);
-    this.folderService.loadFolderChildren(folderId).subscribe();
   }
 
   private buildChildren(folder: Folder): TreeNode[] | undefined {
@@ -124,6 +132,8 @@ export class ExplorerTreeComponent {
       expanded: id ? this.expandedKeys.has(id) : false
     } as TreeNode;
   }
+
+
 
   private filterOutFilesFromNodes(nodes: TreeNode[] | undefined): TreeNode[] {
     if (!nodes || nodes.length === 0) return [];
