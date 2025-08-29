@@ -15,11 +15,11 @@
           <div class="node-actions" (click)="$event.stopPropagation()">
             <button pButton icon="pi pi-plus" class="p-button-rounded p-button-sm" (click)="addFolder(node)"></button>
             <button pButton icon="pi pi-pencil" class="p-button-rounded p-button-sm"
-              (click)="renameFolder(node)"></button>
+              (click)="renameFolder(node)" [disabled]="isRootFolder(node)"></button>
             <button pButton icon="pi pi-upload" class="p-button-rounded p-button-sm"
               (click)="uploadFile(node)"></button>
             <button pButton icon="pi pi-trash" class="p-button-rounded p-button-sm p-button-danger"
-              (click)="deleteFolder(node)"></button>
+              (click)="deleteFolder(node)" [disabled]="isRootFolder(node)"></button>
           </div>
         </div>
       </ng-template>

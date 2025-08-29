@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output } from '@angular/core';
+import { Component, EventEmitter, Output, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DialogModule } from 'primeng/dialog';
 import { FileUploadModule } from 'primeng/fileupload';
@@ -14,8 +14,11 @@ export class UploadDialogComponent {
   visible = false;
   @Output() filesSelected = new EventEmitter<File[]>();
 
+  constructor(private cdr: ChangeDetectorRef) { }
+
   open() {
     this.visible = true;
+    this.cdr.detectChanges();
   }
 
   close() {

@@ -1,10 +1,16 @@
 ﻿using FileExplorerWebApp.Application.DTOs;
+using FileExplorerWebApp.Application.DTOs.Preview;
 using FileExplorerWebApp.Application.Interfaces.Repositories;
 using FileExplorerWebApp.Application.Mediator.Queries;
+using FileExplorerWebApp.Infrastructure.Utils;
 using MediatR;
 
 namespace FileExplorerWebApp.Application.Mediator.Handlers
 {
+    /// <summary>
+    /// The get root folders handler.
+    /// </summary>
+    /// <seealso cref="MediatR.IRequestHandler&lt;FileExplorerWebApp.Application.Mediator.Queries.FolderQueries.GetRootFoldersQuery, System.Collections.Generic.List&lt;FileExplorerWebApp.Application.DTOs.FolderDto&gt;&gt;" />
     public class GetRootFoldersHandler
         : IRequestHandler<FolderQueries.GetRootFoldersQuery, List<FolderDto>>
     {
@@ -57,17 +63,31 @@ namespace FileExplorerWebApp.Application.Mediator.Handlers
 
                 var rootFiles = await _repositoryWrapper.Files.GetRootFilesAsync();
 
-                var rootFilesDto = rootFiles
-                    .Select(fi => new FileDto
+                var rootFilesDto = new List<FileDto>();
+                foreach (var file in rootFiles)
+                {
+                    var dto = new FileDto
                     {
-                        Id = fi.Id,
-                        Name = fi.Name,
-                        Mime = fi.Mime,
-                        FolderId = fi.FolderId,
-                        CreatedDateTime = fi.CreatedDateTime,
-                        LastModifiedDateTime = fi.LastModifiedDateTime,
-                    })
-                    .ToList();
+                        Id = file.Id,
+                        Name = file.Name,
+                        Mime = file.Mime,
+                        FolderId = file.FolderId,
+                        CreatedDateTime = file.CreatedDateTime,
+                        LastModifiedDateTime = file.LastModifiedDateTime,
+                    };
+
+                    PreviewResult preview = await PreviewGenerator.GetOrCreatePreviewAsync(
+                        file.Id,
+                        file.Content,
+                        file.Mime
+                    );
+
+                    dto.Preview = preview.PreviewBytes;
+                    dto.PreviewMime = preview.PreviewMime;
+                    dto.PreviewKind = preview.Kind;
+
+                    rootFilesDto.Add(dto);
+                }
 
                 var root = new FolderDto
                 {

@@ -1,4 +1,4 @@
-import { Component, computed, EventEmitter, Output, ChangeDetectionStrategy, Input, effect } from '@angular/core';
+import { Component, computed, EventEmitter, Output, ChangeDetectionStrategy, Input, effect, signal } from '@angular/core';
 import { TreeModule } from 'primeng/tree';
 import { ButtonModule } from 'primeng/button';
 import { TreeNode } from 'primeng/api';
@@ -16,40 +16,54 @@ import { AppFile, Folder } from '../../models/models';
 })
 export class ExplorerTreeComponent {
   @Input() selectedFolderId: string | null = null;
-  @Output() fileSelectedEvent = new EventEmitter<{ fileId: string, parentId?: string, file?: AppFile }>();
-  @Output() addFolderEvent = new EventEmitter<string>();
+  @Output() fileSelectedEvent = new EventEmitter<{ fileId: string, parentId?: string | null, file?: AppFile }>();
+  @Output() addFolderEvent = new EventEmitter<string | null>();
   @Output() renameFolderEvent = new EventEmitter<string>();
   @Output() deleteFolderEvent = new EventEmitter<Folder>();
   @Output() getFolderByIdEvent = new EventEmitter<string>();
-  @Output() uploadFilesEvent = new EventEmitter<string>();
-
+  @Output() uploadFilesEvent = new EventEmitter<string | null>();
 
   selectedNode: TreeNode | null = null;
 
   nodes = computed(() => this.convertFoldersToTree(this.folderService.folders()));
   folderOnlyNodes = computed(() => this.filterOutFilesFromNodes(this.nodes()));
+  private expandedKeys = signal<Set<string>>(new Set<string>());
 
-  private expandedKeys = new Set<string>();
-
-  constructor(private folderService: FolderService) {
-    effect(() => {
-      const rootFolders = this.folderService.folders();
-      if (rootFolders && rootFolders.length > 0) {
-        const firstRootFolder = rootFolders[0];
-        Promise.resolve().then(() => {
-          this.expandedKeys.add(firstRootFolder.id);
-        });
-      }
-    });
-  }
+  constructor(private folderService: FolderService) { }
 
   ngOnInit() {
+    this.expandRootFolders();
+
+    
+    setTimeout(() => {
+      this.expandRootFolders();
+    }, 100);
   }
 
-  addFolder(node: TreeNode) { this.addFolderEvent.emit(node.key as string); }
+  expandRootFolders() {
+    const rootFolders = this.folderService.folders();
+    if (rootFolders && rootFolders.length > 0) {
+      rootFolders.forEach(rootFolder => {
+        this.expandFolderById(rootFolder.id);
+      });
+    }
+  }
+
+  addFolder(node: TreeNode) {
+    const id = node.key as string | undefined;
+    const parent = this.isRootFolder(node) ? null : (id ?? null);
+    this.addFolderEvent.emit(parent);
+  }
+
   renameFolder(node: TreeNode) { this.renameFolderEvent.emit(node.key as string); }
+
   deleteFolder(node: TreeNode) { this.deleteFolderEvent.emit(node.data.folder as Folder); }
-  uploadFile(node: TreeNode) { this.uploadFilesEvent.emit(node.key as string); }
+
+  uploadFile(node: TreeNode) {
+    const id = node.key as string | undefined;
+    const parent = this.isRootFolder(node) ? null : (id ?? null);
+    this.uploadFilesEvent.emit(parent);
+  }
 
   trackByNode(node: TreeNode) {
     return node.key;
@@ -60,7 +74,7 @@ export class ExplorerTreeComponent {
       this.getFolderByIdEvent.emit(node.key as string);
     } else if (node.data?.type === 'file') {
       const file: AppFile | undefined = node.data?.file;
-      this.fileSelectedEvent.emit({ fileId: node.key as string, parentId: file?.folderId, file });
+      this.fileSelectedEvent.emit({ fileId: node.key as string, parentId: file?.folderId ?? null, file });
     }
     this.selectedNode = node;
   }
@@ -71,7 +85,7 @@ export class ExplorerTreeComponent {
       this.getFolderByIdEvent.emit(node.key as string);
     } else if (node.data?.type === 'file') {
       const file: AppFile | undefined = node.data?.file;
-      this.fileSelectedEvent.emit({ fileId: node.key as string, parentId: file?.folderId, file });
+      this.fileSelectedEvent.emit({ fileId: node.key as string, parentId: file?.folderId ?? null, file });
     }
     this.selectedNode = node;
   }
@@ -79,21 +93,60 @@ export class ExplorerTreeComponent {
   onNodeExpand(event: any) {
     const node: TreeNode = event.node;
     const id = node.key as string;
-    if (id) this.expandedKeys.add(id);
-
+    if (id) {
+      const currentExpanded = this.expandedKeys();
+      currentExpanded.add(id);
+      this.expandedKeys.set(new Set(currentExpanded));
+    }
     if (!node.children || node.children.length === 0) {
-      this.folderService.loadSubFolders(id).subscribe();
+      const folder = this.findFolderById(this.folderService.folders(), id);
+      if (folder && (!folder.subFolders || folder.subFolders.length === 0)) {
+        this.folderService.loadSubFolders(id).subscribe({
+          error: err => console.error('loadSubFolders error:', err)
+        });
+      }
     }
   }
 
   onNodeCollapse(event: any) {
     const id = event.node.key as string;
-    if (id) this.expandedKeys.delete(id);
+    if (id) {
+      const currentExpanded = this.expandedKeys();
+      currentExpanded.delete(id);
+      this.expandedKeys.set(new Set(currentExpanded));
+    }
   }
 
   expandFolderById(folderId: string) {
     if (!folderId) return;
-    this.expandedKeys.add(folderId);
+    const currentExpanded = this.expandedKeys();
+    currentExpanded.add(folderId);
+    this.expandedKeys.set(new Set(currentExpanded));
+    const folder = this.findFolderById(this.folderService.folders(), folderId);
+    if (folder && (!folder.subFolders || folder.subFolders.length === 0)) {
+      this.folderService.loadSubFolders(folderId).subscribe({
+        error: err => console.error('loadSubFolders error:', err)
+      });
+    }
+  }
+
+  isRootFolder(node: TreeNode): boolean {
+    const nodeId = node.key as string;
+    const rootFolders = this.folderService.folders();
+    const isInRootFolders = rootFolders && rootFolders.some(rf => rf.id === nodeId);
+    return isInRootFolders;
+  }
+
+  private findFolderById(folders: Folder[] | undefined, id: string): Folder | undefined {
+    if (!folders || !id) return undefined;
+    for (const f of folders) {
+      if (f.id === id) return f;
+      if (f.subFolders) {
+        const found = this.findFolderById(f.subFolders, id);
+        if (found) return found;
+      }
+    }
+    return undefined;
   }
 
   private buildChildren(folder: Folder): TreeNode[] | undefined {
@@ -129,11 +182,9 @@ export class ExplorerTreeComponent {
       data: { type: 'folder', folder },
       children: this.buildChildren(folder),
       leaf: !folder.hasChildren,
-      expanded: id ? this.expandedKeys.has(id) : false
+      expanded: id ? this.expandedKeys().has(id) : false
     } as TreeNode;
   }
-
-
 
   private filterOutFilesFromNodes(nodes: TreeNode[] | undefined): TreeNode[] {
     if (!nodes || nodes.length === 0) return [];

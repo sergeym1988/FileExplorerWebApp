@@ -11,9 +11,12 @@ export class FileService {
 
   constructor(private http: HttpClient, private folderService: FolderService) { }
 
-  uploadFiles(parentId: string, files: globalThis.File[]): Observable<AppFile[]> {
-    const formData = new FormData();
-    formData.append('parentId', parentId);
+  uploadFiles(parentId: string | null, files: globalThis.File[]): Observable<AppFile[]> {
+    const formData = new FormData();   
+    if (parentId && parentId.trim() !== '') {
+      formData.append('parentId', parentId);
+    }
+
     files.forEach((f: globalThis.File) => formData.append('files', f, f.name));
 
     return this.http.post<AppFile[]>(`${this.apiUrl}`, formData).pipe(

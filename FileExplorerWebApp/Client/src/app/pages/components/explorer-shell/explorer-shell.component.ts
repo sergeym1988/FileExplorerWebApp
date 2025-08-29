@@ -45,7 +45,7 @@ export class ExplorerShellComponent implements OnInit {
   drawerVisible = false;
 
   newObjectName = '';
-  selectedFolderId: string | null = null;
+  selectedFolderId: string | null = null; // internal canonical root = null
   selectedFileId: string | null = null;
 
   constructor(
@@ -57,67 +57,110 @@ export class ExplorerShellComponent implements OnInit {
   ) { }
 
   ngOnInit() {
+   
     this.folderService.loadRootFolders().subscribe({
       next: (rootFolders) => {
-        if (rootFolders && rootFolders.length > 0) {
-          const firstRootFolder = rootFolders[0];
-          Promise.resolve().then(() => {
-            this.selectedFolderId = firstRootFolder.id;
-            this.cdr.detectChanges();
-          });
-        }
+      
+        this.selectedFolderId = null;
+        this.cdr.detectChanges();
+      
+        setTimeout(() => {
+          this.tree?.expandRootFolders();
+        }, 200);
       },
       error: (err) => console.error('Error loading root folders:', err)
     });
   }
-
-  openAddFolderDrawer(folderId: string) {
-    this.drawerMode = DrawerMode.Add;
-    this.selectedFolderId = folderId;
-    this.drawerVisible = true;
+ 
+  private normalizeParentIdForFrontend(id: string | null | undefined): string | null {
+    if (id === null || id === undefined) {
+      return null;
+    }
+    const trimmed = id.trim();
+    if (trimmed === '' || trimmed === '00000000-0000-0000-0000-000000000000') {
+      return null;
+    }
+    return trimmed;
   }
 
-  openRenameFolderDrawer(folderId: string) {
+ 
+  private formatParentIdForBackend(parentId: string | null): string {
+    // default: send empty string to represent root in form data
+    return parentId ?? '';
+  }
+
+  // Check if current folder is ROOT
+  isCurrentFolderRoot(): boolean {
+    return this.selectedFolderId === null;
+  }
+
+  openRenameFolderDrawer(folderId: string | null) {
     this.drawerMode = DrawerMode.RenameFolder;
-    this.selectedFolderId = folderId;
+    this.selectedFolderId = this.normalizeParentIdForFrontend(folderId);
     this.drawerVisible = true;
+    this.cdr.detectChanges();
   }
 
-  openRenameFileDrawer(fileId: string) {
+  openRenameFileDrawer(fileId: string | null) {
     this.drawerMode = DrawerMode.RenameFile;
-    this.selectedFileId = fileId;
+    this.selectedFileId = fileId ?? null;
     this.drawerVisible = true;
+    this.cdr.detectChanges();
+  }
+ 
+  openAddFolderDrawer(folderId: string | null) {
+    this.drawerMode = DrawerMode.Add;
+    // keep null to indicate root
+    this.selectedFolderId = this.normalizeParentIdForFrontend(folderId);
+    this.drawerVisible = true;
+    this.cdr.detectChanges();
   }
 
   submitDrawer() {
     const name = this.newObjectName.trim();
     if (!name) return;
 
-    if (this.drawerMode === DrawerMode.Add && this.selectedFolderId) {
-      const newFolder: Partial<Folder> = { name, parentFolderId: this.selectedFolderId };
-      this.folderService.createFolder(newFolder).subscribe({
-        next: () => {
-          this.tree?.expandFolderById(this.selectedFolderId!);
-          this.closeDrawer();
-        },
-        error: err => console.error('Error while creating folder:', err)
-      });
-    }
+    switch (this.drawerMode) {
+      case DrawerMode.Add:       
+        const parentIdFrontend = this.selectedFolderId ?? null;
+        const newFolder: Partial<Folder> = { name, parentFolderId: parentIdFrontend ?? undefined }; // pass undefined for root
+        console.debug('Creating folder. parentId(frontend)=', parentIdFrontend, 'name=', name);
+        this.folderService.createFolder(newFolder).subscribe({
+          next: (createdFolder) => {         
+            if (parentIdFrontend) {
+              this.tree?.expandFolderById(parentIdFrontend);
+            } else {             
+              this.folderService.loadRootFolders().subscribe({
+                next: () => {
+                  console.log('Root folders reloaded after creating folder');
+                  this.cdr.detectChanges();
+                },
+                error: err => console.error('Error reloading root folders:', err)
+              });
+            }
+            this.closeDrawer();
+          },
+          error: err => console.error('Error while creating folder:', err)
+        });
+        break;
 
-    if (this.drawerMode === DrawerMode.RenameFolder && this.selectedFolderId) {
-      const folder: Folder = { id: this.selectedFolderId, name } as Folder;
-      this.folderService.renameFolder(folder).subscribe({
-        next: () => this.closeDrawer(),
-        error: err => console.error('Error while renaming folder:', err)
-      });
-    }
+      case DrawerMode.RenameFolder:
+        if (!this.selectedFolderId) break;
+        const folder: Folder = { id: this.selectedFolderId, name } as Folder;
+        this.folderService.renameFolder(folder).subscribe({
+          next: () => this.closeDrawer(),
+          error: err => console.error('Error while renaming folder:', err)
+        });
+        break;
 
-    if (this.drawerMode === DrawerMode.RenameFile && this.selectedFileId) {
-      const file: AppFile = { id: this.selectedFileId, name, folderId: this.selectedFolderId! } as AppFile;
-      this.fileService.renameFile(file).subscribe({
-        next: () => this.closeDrawer(),
-        error: err => console.error('Error while renaming file:', err)
-      });
+      case DrawerMode.RenameFile:
+        if (!this.selectedFileId) break;
+        const file: AppFile = { id: this.selectedFileId, name, folderId: this.selectedFolderId! } as AppFile;
+        this.fileService.renameFile(file).subscribe({
+          next: () => this.closeDrawer(),
+          error: err => console.error('Error while renaming file:', err)
+        });
+        break;
     }
   }
 
@@ -146,7 +189,7 @@ export class ExplorerShellComponent implements OnInit {
       icon: 'pi pi-exclamation-triangle',
       acceptLabel: 'Confirm',
       rejectLabel: 'Cancel',
-      accept: () => this.deleteFile(file.id),
+      accept: () => this.deleteFile(file.id!),
       reject: () => console.log('File deletion cancelled')
     });
   }
@@ -164,53 +207,68 @@ export class ExplorerShellComponent implements OnInit {
       error: err => console.error('Error while deleting file:', err)
     });
   }
+ 
+  openFolderById(folderId: string | null) {
+    this.selectedFolderId = this.normalizeParentIdForFrontend(folderId);
 
-  openFolderById(folderId: string) {
-    this.selectedFolderId = folderId;
-    this.folderService.loadFolderChildren(folderId).subscribe({
-      next: () => console.log('Folder opened'),
-      error: err => console.error('Error while opening folder:', err)
-    });
+    if (this.selectedFolderId === null) {      
+      console.log('ROOT folder selected');
+    } else {
+      this.folderService.loadFolderChildren(this.selectedFolderId).subscribe({
+        next: () => console.log('Folder opened'),
+        error: err => console.error('Error while opening folder:', err)
+      });
+    }
   }
 
-  openUploadDialog(parentId: string) {
-    this.pendingUploadParentId = parentId;
+  openUploadDialog(parentId: string | null) {
+    this.pendingUploadParentId = this.normalizeParentIdForFrontend(parentId);
     this.uploadDialog.open();
+    this.cdr.detectChanges();
   }
 
   uploadFiles(ev: any) {
-    if (ev && ev.files) {
-      this.uploadToServer(ev.parentId, ev.files as globalThis.File[]);
-    } else if (typeof ev === 'string') {
-      this.openUploadDialog(ev);
+    if (ev && ev.files) {  
+      const pid = this.normalizeParentIdForFrontend(ev.parentId);
+      this.uploadToServer(pid, ev.files as globalThis.File[]);
+    } else if (typeof ev === 'string' || ev === null) {
+      this.openUploadDialog(ev as string | null);
     }
   }
 
   handleFiles(files: globalThis.File[]) {
     const parentId = this.pendingUploadParentId;
     this.pendingUploadParentId = null;
-    if (!parentId) {
-      this.messageService.add({ severity: 'warn', summary: 'Warning', detail: 'No target folder selected for upload.' });
+    if (!files || files.length === 0) {
+      this.messageService.add({ severity: 'warn', summary: 'Warning', detail: 'No files selected' });
       return;
     }
-    this.uploadToServer(parentId, files);
+    this.uploadToServer(parentId ?? null, files);
   }
 
-  onTreeFileSelected(ev: { fileId: string, parentId?: string, file?: AppFile }) {
-    if (ev.parentId) {
-      this.selectedFolderId = ev.parentId;
-      this.folderService.loadFolderChildren(ev.parentId).subscribe({
+  onTreeFileSelected(ev: { fileId: string, parentId?: string | null, file?: AppFile }) {
+    const parentNormalized = this.normalizeParentIdForFrontend(ev.parentId ?? null);
+    if (parentNormalized) {
+      this.selectedFolderId = parentNormalized;
+      this.folderService.loadFolderChildren(parentNormalized).subscribe({
         next: () => { },
         error: err => console.error('Error while loading folder on file selection:', err)
       });
+    } else {
+      this.selectedFolderId = null;
     }
     this.selectedFileId = ev.fileId;
   }
 
-  onFolderSelectedFromTree(folderId: string) {
+  onFolderSelectedFromTree(folderId: string | null) {
     this.selectedFileId = null;
-    this.selectedFolderId = folderId;
-    this.folderService.loadFolderChildren(folderId).subscribe();
+    this.selectedFolderId = this.normalizeParentIdForFrontend(folderId);
+
+    if (this.selectedFolderId === null) {   
+      console.log('ROOT folder selected from tree');
+    } else {
+      this.folderService.loadFolderChildren(this.selectedFolderId).subscribe();
+    }
   }
 
   onFolderSelectedFromFiles(folderId: string) {
@@ -219,16 +277,28 @@ export class ExplorerShellComponent implements OnInit {
     this.tree?.expandFolderById(folderId);
   }
 
-  private uploadToServer(parentId: string, files: globalThis.File[]) {
+  private uploadToServer(parentId: string | null, files: globalThis.File[]) {
     if (!files || files.length === 0) return;
 
     this.isUploading.set(true);
-
+  
     this.fileService.uploadFiles(parentId, files)
       .pipe(finalize(() => this.isUploading.set(false)))
       .subscribe({
         next: uploadedFiles => {
           this.messageService.add({ severity: 'success', summary: 'Done', detail: `${uploadedFiles.length} file(s) uploaded` });
+       
+          if (parentId) {
+            this.folderService.loadFolderChildren(parentId).subscribe();
+          } else {
+            this.folderService.loadRootFolders().subscribe({
+              next: () => {
+                console.log('Root folders reloaded after uploading files');
+                this.cdr.detectChanges();
+              },
+              error: err => console.error('Error reloading root folders:', err)
+            });
+          }
         },
         error: err => {
           console.error('Upload failed', err);

@@ -19,9 +19,35 @@ export class ExplorerFilesComponent implements OnDestroy, OnInit {
 
   private _folderId: string | null = null;
   public PreviewKind = PreviewKind;
-  currentFolderParentId = computed<string | null>(() => this.findParentIdOfFolder(this.folderService.folders(), this._folderId) ?? null);
+  currentFolderParentId = computed<string | null>(() => {   
+    if (this._folderId === null) {
+      return null;
+    }
+    return this.findParentIdOfFolder(this.folderService.folders(), this._folderId) ?? null;
+  });
   currentFolder = computed<Folder | undefined>(() => this.findFolderById(this.folderService.folders(), this._folderId));
-  folderContent = computed<(Folder | AppFile)[]>(() => {
+  folderContent = computed<(Folder | AppFile)[]>(() => {  
+    if (this._folderId === null) {
+      const rootFolders = this.folderService.folders();
+      if (!rootFolders || rootFolders.length === 0) return [];
+
+      // Collect all files and folders from root folders
+      const allItems: (Folder | AppFile)[] = [];
+      rootFolders.forEach(rootFolder => {
+        // Add subfolders if they exist
+        if (Array.isArray(rootFolder.subFolders)) {
+          allItems.push(...rootFolder.subFolders);
+        }
+
+        // Add files if they exist
+        if (Array.isArray(rootFolder.files)) {
+          allItems.push(...rootFolder.files);
+        }
+      });
+
+      return allItems;
+    }
+
     const folder = this.currentFolder();
     if (!folder) return [] as (Folder | AppFile)[];
     const subFolders = Array.isArray(folder.subFolders) ? folder.subFolders : [];
@@ -32,19 +58,22 @@ export class ExplorerFilesComponent implements OnDestroy, OnInit {
   @Input()
   set folderId(value: string | null) {
     this._folderId = value;
-    if (value) {
-      Promise.resolve().then(() => {
-        const folder = this.findFolderById(this.folderService.folders(), value);
-        if (!folder || !folder.subFolders || !folder.files) {
-          const rootFolders = this.folderService.folders();
-          const isRootFolder = rootFolders && rootFolders.some(rf => rf.id === value);
-          if (!isRootFolder) {
-            this.loadFolderContent(value);
-          }
-        }
-      });
-    } else {
-      this.clearPreviewCacheForAll();
+   
+    this.clearPreviewCacheForAll();
+
+    if (!value) {
+      return;
+    }
+
+    const folder = this.findFolderById(this.folderService.folders(), value);
+
+    const rootFolders = this.folderService.folders();
+    const isRootFolder = rootFolders && rootFolders.some(rf => rf.id === value);
+
+    if (!folder || !folder.subFolders || !folder.files) {
+      if (!isRootFolder) {
+        this.loadFolderContent(value);
+      }
     }
   }
   get folderId() { return this._folderId; }
@@ -54,22 +83,15 @@ export class ExplorerFilesComponent implements OnDestroy, OnInit {
   @Output() renameFileEvent = new EventEmitter<string>();
   @Output() deleteFileEvent = new EventEmitter<AppFile>();
 
+
   private previewUrlCache = new Map<string, SafeUrl | string | null>();
 
   constructor(
     private folderService: FolderService,
     private sanitizer: DomSanitizer
-  ) {
+  ) { }
 
-    effect(() => {
-      if (!this._folderId) {
-        this.clearPreviewCacheForAll();
-      }
-    });
-  }
-
-  ngOnInit() {
-
+  ngOnInit() {  
   }
 
   onRenameFileClicked(file: AppFile, ev?: MouseEvent) {
@@ -83,6 +105,8 @@ export class ExplorerFilesComponent implements OnDestroy, OnInit {
     if (!file) return;
     this.deleteFileEvent.emit(file);
   }
+
+
 
   private loadFolderContent(folderId: string) {
     this.clearPreviewCacheForAll();
@@ -116,18 +140,20 @@ export class ExplorerFilesComponent implements OnDestroy, OnInit {
     return undefined;
   }
 
-  canGoUp(): boolean {
+  canGoUp(): boolean {  
+    if (this._folderId === null) {
+      return false;
+    }
     return !!this.currentFolderParentId();
   }
 
   goUp() {
     const parentId = this.currentFolderParentId();
     if (!parentId) return;
+
+    this._folderId = parentId;
+    this.loadFolderContent(parentId);
     this.openFolder.emit(parentId);
-    Promise.resolve().then(() => {
-      this._folderId = parentId;
-      this.loadFolderContent(parentId);
-    });
   }
 
   isFile(item: any): item is AppFile {
@@ -155,16 +181,12 @@ export class ExplorerFilesComponent implements OnDestroy, OnInit {
   }
 
   onItemDoubleClick(item: FolderOrFile) {
-    if (this.isFolder(item)) {
-      const fid = item.id;
-      if (!fid) return;
-      Promise.resolve().then(() => {
-        this._folderId = fid;
-        this.loadFolderContent(fid);
-        this.openFolder.emit(fid);
-      });
-    } else if (this.isFile(item)) {
-      if (item.id) this.openFile.emit(item.id);
+    if (this.isFolder(item) && item.id) {
+      this._folderId = item.id;
+      this.loadFolderContent(item.id);
+      this.openFolder.emit(item.id);
+    } else if (this.isFile(item) && item.id) {
+      this.openFile.emit(item.id);
     }
   }
 
@@ -250,32 +272,22 @@ export class ExplorerFilesComponent implements OnDestroy, OnInit {
         const text = new TextDecoder().decode(bytes);
         return text.length > maxChars ? text.substring(0, maxChars) + '…' : text;
       }
-
-      if (file.preview instanceof ArrayBuffer) {
-        const bytes = new Uint8Array(file.preview as ArrayBuffer);
-        const text = new TextDecoder().decode(bytes);
-        return text.length > maxChars ? text.substring(0, maxChars) + '…' : text;
-      }
-
-      if (file.preview instanceof Blob) {
-        return '';
-      }
-    } catch (e) {
-      console.warn('Preview text decode failed', e);
+      return '';
+    } catch {
       return '';
     }
-
-    return '';
   }
 
   private clearPreviewCacheForAll() {
-    for (const [id, cached] of this.previewUrlCache) {
-      if (!cached) continue;
-    }
+    this.previewUrlCache.forEach(value => {
+      if (typeof value === 'string' && value.startsWith('blob:')) {
+        URL.revokeObjectURL(value);
+      }
+    });
     this.previewUrlCache.clear();
   }
 
-  ngOnDestroy(): void {
+  ngOnDestroy() {
     this.clearPreviewCacheForAll();
   }
 }
