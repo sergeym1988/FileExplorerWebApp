@@ -19,27 +19,24 @@ export class ExplorerFilesComponent implements OnDestroy, OnInit {
 
   private _folderId: string | null = null;
   public PreviewKind = PreviewKind;
-  currentFolderParentId = computed<string | null>(() => {   
+  currentFolderParentId = computed<string | null>(() => {
     if (this._folderId === null) {
       return null;
     }
     return this.findParentIdOfFolder(this.folderService.folders(), this._folderId) ?? null;
   });
   currentFolder = computed<Folder | undefined>(() => this.findFolderById(this.folderService.folders(), this._folderId));
-  folderContent = computed<(Folder | AppFile)[]>(() => {  
+  folderContent = computed<(Folder | AppFile)[]>(() => {
     if (this._folderId === null) {
       const rootFolders = this.folderService.folders();
       if (!rootFolders || rootFolders.length === 0) return [];
 
-      // Collect all files and folders from root folders
       const allItems: (Folder | AppFile)[] = [];
       rootFolders.forEach(rootFolder => {
-        // Add subfolders if they exist
         if (Array.isArray(rootFolder.subFolders)) {
           allItems.push(...rootFolder.subFolders);
         }
 
-        // Add files if they exist
         if (Array.isArray(rootFolder.files)) {
           allItems.push(...rootFolder.files);
         }
@@ -58,23 +55,7 @@ export class ExplorerFilesComponent implements OnDestroy, OnInit {
   @Input()
   set folderId(value: string | null) {
     this._folderId = value;
-   
     this.clearPreviewCacheForAll();
-
-    if (!value) {
-      return;
-    }
-
-    const folder = this.findFolderById(this.folderService.folders(), value);
-
-    const rootFolders = this.folderService.folders();
-    const isRootFolder = rootFolders && rootFolders.some(rf => rf.id === value);
-
-    if (!folder || !folder.subFolders || !folder.files) {
-      if (!isRootFolder) {
-        this.loadFolderContent(value);
-      }
-    }
   }
   get folderId() { return this._folderId; }
 
@@ -85,13 +66,14 @@ export class ExplorerFilesComponent implements OnDestroy, OnInit {
 
 
   private previewUrlCache = new Map<string, SafeUrl | string | null>();
+  private isLoadingContent = false;
 
   constructor(
     private folderService: FolderService,
     private sanitizer: DomSanitizer
   ) { }
 
-  ngOnInit() {  
+  ngOnInit() {
   }
 
   onRenameFileClicked(file: AppFile, ev?: MouseEvent) {
@@ -106,41 +88,7 @@ export class ExplorerFilesComponent implements OnDestroy, OnInit {
     this.deleteFileEvent.emit(file);
   }
 
-
-
-  private loadFolderContent(folderId: string) {
-    this.clearPreviewCacheForAll();
-    this.folderService.loadFolderChildren(folderId).subscribe({
-      next: () => { },
-      error: err => {
-        console.error(err);
-      }
-    });
-  }
-
-  private findFolderById(folders: Folder[] | undefined, id: string | null | undefined): Folder | undefined {
-    if (!folders || !id) return undefined;
-    for (const f of folders) {
-      if (f.id === id) return f;
-      const found = this.findFolderById(f.subFolders, id);
-      if (found) return found;
-    }
-    return undefined;
-  }
-
-  private findParentIdOfFolder(folders: Folder[] | undefined, childId: string | null | undefined): string | undefined {
-    if (!folders || !childId) return undefined;
-    for (const f of folders) {
-      if (Array.isArray(f.subFolders) && f.subFolders.some(sf => sf.id === childId)) {
-        return f.id;
-      }
-      const found = this.findParentIdOfFolder(f.subFolders, childId);
-      if (found) return found;
-    }
-    return undefined;
-  }
-
-  canGoUp(): boolean {  
+  canGoUp(): boolean {
     if (this._folderId === null) {
       return false;
     }
@@ -180,7 +128,13 @@ export class ExplorerFilesComponent implements OnDestroy, OnInit {
     return `${(size / 1024).toFixed(1)} KB`;
   }
 
+  private isProcessingDoubleClick = false;
+
   onItemDoubleClick(item: FolderOrFile) {
+    if (this.isProcessingDoubleClick) return;
+
+    this.isProcessingDoubleClick = true;
+
     if (this.isFolder(item) && item.id) {
       this._folderId = item.id;
       this.loadFolderContent(item.id);
@@ -188,6 +142,10 @@ export class ExplorerFilesComponent implements OnDestroy, OnInit {
     } else if (this.isFile(item) && item.id) {
       this.openFile.emit(item.id);
     }
+
+    setTimeout(() => {
+      this.isProcessingDoubleClick = false;
+    }, 300);
   }
 
   getPreviewImageSrc(file: AppFile): SafeUrl | null {
@@ -278,6 +236,10 @@ export class ExplorerFilesComponent implements OnDestroy, OnInit {
     }
   }
 
+  ngOnDestroy() {
+    this.clearPreviewCacheForAll();
+  }
+
   private clearPreviewCacheForAll() {
     this.previewUrlCache.forEach(value => {
       if (typeof value === 'string' && value.startsWith('blob:')) {
@@ -287,7 +249,42 @@ export class ExplorerFilesComponent implements OnDestroy, OnInit {
     this.previewUrlCache.clear();
   }
 
-  ngOnDestroy() {
+  private loadFolderContent(folderId: string) {
+    if (this.isLoadingContent) return;
+
+    this.isLoadingContent = true;
     this.clearPreviewCacheForAll();
+
+    this.folderService.loadFolderChildren(folderId).subscribe({
+      next: () => {
+        this.isLoadingContent = false;
+      },
+      error: err => {
+        console.error('Error loading folder content:', err);
+        this.isLoadingContent = false;
+      }
+    });
+  }
+
+  private findFolderById(folders: Folder[] | undefined, id: string | null | undefined): Folder | undefined {
+    if (!folders || !id) return undefined;
+    for (const f of folders) {
+      if (f.id === id) return f;
+      const found = this.findFolderById(f.subFolders, id);
+      if (found) return found;
+    }
+    return undefined;
+  }
+
+  private findParentIdOfFolder(folders: Folder[] | undefined, childId: string | null | undefined): string | undefined {
+    if (!folders || !childId) return undefined;
+    for (const f of folders) {
+      if (Array.isArray(f.subFolders) && f.subFolders.some(sf => sf.id === childId)) {
+        return f.id;
+      }
+      const found = this.findParentIdOfFolder(f.subFolders, childId);
+      if (found) return found;
+    }
+    return undefined;
   }
 }

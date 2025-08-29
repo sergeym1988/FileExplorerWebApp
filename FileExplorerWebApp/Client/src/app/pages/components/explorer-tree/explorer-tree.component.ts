@@ -20,7 +20,7 @@ export class ExplorerTreeComponent {
   @Output() addFolderEvent = new EventEmitter<string | null>();
   @Output() renameFolderEvent = new EventEmitter<string>();
   @Output() deleteFolderEvent = new EventEmitter<Folder>();
-  @Output() getFolderByIdEvent = new EventEmitter<string>();
+  @Output() getFolderByIdEvent = new EventEmitter<string | null>();
   @Output() uploadFilesEvent = new EventEmitter<string | null>();
 
   selectedNode: TreeNode | null = null;
@@ -34,7 +34,7 @@ export class ExplorerTreeComponent {
   ngOnInit() {
     this.expandRootFolders();
 
-    
+
     setTimeout(() => {
       this.expandRootFolders();
     }, 100);
@@ -69,28 +69,41 @@ export class ExplorerTreeComponent {
     return node.key;
   }
 
-  onLabelClick(node: TreeNode) {
-    if (node.data?.type === 'folder') {
-      this.getFolderByIdEvent.emit(node.key as string);
-    } else if (node.data?.type === 'file') {
-      const file: AppFile | undefined = node.data?.file;
-      this.fileSelectedEvent.emit({ fileId: node.key as string, parentId: file?.folderId ?? null, file });
-    }
-    this.selectedNode = node;
-  }
+
+
+  private isProcessingNodeSelect = false;
 
   onNodeSelect(event: any) {
+    if (this.isProcessingNodeSelect) return;
+
+    this.isProcessingNodeSelect = true;
+
     const node: TreeNode = event.node;
+
     if (node.data?.type === 'folder') {
-      this.getFolderByIdEvent.emit(node.key as string);
+      if (this.isRootFolder(node)) {
+        this.getFolderByIdEvent.emit(null); // Emit null for ROOT
+      } else {
+        this.getFolderByIdEvent.emit(node.key as string);
+      }
     } else if (node.data?.type === 'file') {
       const file: AppFile | undefined = node.data?.file;
       this.fileSelectedEvent.emit({ fileId: node.key as string, parentId: file?.folderId ?? null, file });
     }
     this.selectedNode = node;
+
+    setTimeout(() => {
+      this.isProcessingNodeSelect = false;
+    }, 300);
   }
 
+  private isProcessingNodeExpand = false;
+
   onNodeExpand(event: any) {
+    if (this.isProcessingNodeExpand) return;
+
+    this.isProcessingNodeExpand = true;
+
     const node: TreeNode = event.node;
     const id = node.key as string;
     if (id) {
@@ -98,14 +111,8 @@ export class ExplorerTreeComponent {
       currentExpanded.add(id);
       this.expandedKeys.set(new Set(currentExpanded));
     }
-    if (!node.children || node.children.length === 0) {
-      const folder = this.findFolderById(this.folderService.folders(), id);
-      if (folder && (!folder.subFolders || folder.subFolders.length === 0)) {
-        this.folderService.loadSubFolders(id).subscribe({
-          error: err => console.error('loadSubFolders error:', err)
-        });
-      }
-    }
+
+    this.isProcessingNodeExpand = false;
   }
 
   onNodeCollapse(event: any) {

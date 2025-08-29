@@ -14,20 +14,34 @@
 
 </p-splitter>
 
-<p-drawer [(visible)]="drawerVisible" position="right" [modal]="true">
-  @if (drawerMode === DrawerMode.Add) {
-  <h3>Create folder</h3>
-  }
-  @else if (drawerMode === DrawerMode.RenameFolder) {
-  <h3>Rename folder</h3>
-  }
-  @else if (drawerMode === DrawerMode.RenameFile) {
-  <h3>Rename file</h3>
-  }
-  <input type="text" [(ngModel)]="newObjectName" placeholder="Enter name" />
+<p-drawer [(visible)]="drawerVisible" position="right" [modal]="true" [closable]="false" (onHide)="closeDrawer()">
+  <ng-template pTemplate="header">
+    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+      @if (drawerMode === DrawerMode.Add) {
+      <h3 style="margin: 0;">Create folder</h3>
+      }
+      @else if (drawerMode === DrawerMode.RenameFolder) {
+      <h3 style="margin: 0;">Rename folder</h3>
+      }
+      @else if (drawerMode === DrawerMode.RenameFile) {
+      <h3 style="margin: 0;">Rename file</h3>
+      }
+      <button pButton icon="pi pi-times" styleClass="p-button-text p-button-rounded p-button-sm" (click)="closeDrawer()"
+        [attr.aria-label]="'Close'">
+      </button>
+    </div>
+  </ng-template>
 
-  <button pButton [label]="drawerMode === DrawerMode.Add ? 'Create' : 'Rename'" (click)="submitDrawer()">
-  </button>
+  <ng-template pTemplate="content">
+    <div style="padding: 1rem;">
+      <input type="text" [(ngModel)]="newObjectName" placeholder="Enter name"
+        style="width: 100%; margin-bottom: 1rem; padding: 0.5rem;" />
+
+      <button pButton [label]="drawerMode === DrawerMode.Add ? 'Create' : 'Rename'" (click)="submitDrawer()"
+        style="width: 100%;">
+      </button>
+    </div>
+  </ng-template>
 </p-drawer>
 
 <p-confirmDialog></p-confirmDialog>

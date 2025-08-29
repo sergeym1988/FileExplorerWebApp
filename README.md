@@ -80,7 +80,7 @@ Before you begin, make sure you have the following installed:
    ```json
    "Username": "postgres",
    "Password": "postgres",
-   "Database": "FileExplorerDb"
+   "Database": "FileExplorer"
 4. Run the backend using `dotnet run`
 5. Database migrations will be applied automatically.
 6. Swagger UI will be available at: `https://localhost:44391/swagger`

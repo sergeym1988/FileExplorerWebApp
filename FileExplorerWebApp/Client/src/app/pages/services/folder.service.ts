@@ -107,4 +107,12 @@ export class FolderService {
     if (!file?.id) return;
     this.folders.update(current => this.folderUtils.renameFileRecursive(current, file.id!, file.name));
   }
+
+  refreshRootFolders(): Observable<Folder[]> {
+    return this.loadRootFolders();
+  }
+
+  refreshFolderChildren(parentId: string): Observable<Folder[]> {
+    return this.loadFolderChildren(parentId);
+  }
 }

@@ -1,4 +1,4 @@
-import { Component, signal, ViewChild, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, signal, ViewChild, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { SplitterModule } from 'primeng/splitter';
 import { DrawerModule } from 'primeng/drawer';
 import { ButtonModule } from 'primeng/button';
@@ -33,7 +33,7 @@ import { finalize } from 'rxjs';
   providers: [ConfirmationService, MessageService],
   templateUrl: 'explorer-shell.component.html',
 })
-export class ExplorerShellComponent implements OnInit {
+export class ExplorerShellComponent implements OnInit, OnDestroy {
 
   @ViewChild('uploadDialog') uploadDialog!: UploadDialogComponent;
   @ViewChild(ExplorerTreeComponent) tree!: ExplorerTreeComponent;
@@ -43,10 +43,12 @@ export class ExplorerShellComponent implements OnInit {
   pendingUploadParentId: string | null = null;
   drawerMode: DrawerMode = DrawerMode.Add;
   drawerVisible = false;
+  private isProcessingFolderSelection = false;
 
   newObjectName = '';
-  selectedFolderId: string | null = null; // internal canonical root = null
+  selectedFolderId: string | null = null;
   selectedFileId: string | null = null;
+  private escapeKeyHandler?: (event: KeyboardEvent) => void;
 
   constructor(
     private folderService: FolderService,
@@ -57,39 +59,34 @@ export class ExplorerShellComponent implements OnInit {
   ) { }
 
   ngOnInit() {
-   
+
     this.folderService.loadRootFolders().subscribe({
-      next: (rootFolders) => {
-      
+      next: () => {
+
         this.selectedFolderId = null;
         this.cdr.detectChanges();
-      
+
         setTimeout(() => {
           this.tree?.expandRootFolders();
         }, 200);
       },
       error: (err) => console.error('Error loading root folders:', err)
     });
-  }
- 
-  private normalizeParentIdForFrontend(id: string | null | undefined): string | null {
-    if (id === null || id === undefined) {
-      return null;
-    }
-    const trimmed = id.trim();
-    if (trimmed === '' || trimmed === '00000000-0000-0000-0000-000000000000') {
-      return null;
-    }
-    return trimmed;
+
+    this.escapeKeyHandler = (event) => {
+      if (event.key === 'Escape' && this.drawerVisible) {
+        this.closeDrawer();
+      }
+    };
+    document.addEventListener('keydown', this.escapeKeyHandler);
   }
 
- 
-  private formatParentIdForBackend(parentId: string | null): string {
-    // default: send empty string to represent root in form data
-    return parentId ?? '';
+  ngOnDestroy() {
+    if (this.escapeKeyHandler) {
+      document.removeEventListener('keydown', this.escapeKeyHandler);
+    }
   }
 
-  // Check if current folder is ROOT
   isCurrentFolderRoot(): boolean {
     return this.selectedFolderId === null;
   }
@@ -107,10 +104,9 @@ export class ExplorerShellComponent implements OnInit {
     this.drawerVisible = true;
     this.cdr.detectChanges();
   }
- 
+
   openAddFolderDrawer(folderId: string | null) {
     this.drawerMode = DrawerMode.Add;
-    // keep null to indicate root
     this.selectedFolderId = this.normalizeParentIdForFrontend(folderId);
     this.drawerVisible = true;
     this.cdr.detectChanges();
@@ -121,16 +117,16 @@ export class ExplorerShellComponent implements OnInit {
     if (!name) return;
 
     switch (this.drawerMode) {
-      case DrawerMode.Add:       
+      case DrawerMode.Add:
         const parentIdFrontend = this.selectedFolderId ?? null;
         const newFolder: Partial<Folder> = { name, parentFolderId: parentIdFrontend ?? undefined }; // pass undefined for root
         console.debug('Creating folder. parentId(frontend)=', parentIdFrontend, 'name=', name);
         this.folderService.createFolder(newFolder).subscribe({
-          next: (createdFolder) => {         
+          next: (createdFolder) => {
             if (parentIdFrontend) {
               this.tree?.expandFolderById(parentIdFrontend);
-            } else {             
-              this.folderService.loadRootFolders().subscribe({
+            } else {
+              this.folderService.refreshRootFolders().subscribe({
                 next: () => {
                   console.log('Root folders reloaded after creating folder');
                   this.cdr.detectChanges();
@@ -168,6 +164,7 @@ export class ExplorerShellComponent implements OnInit {
     this.drawerVisible = false;
     this.newObjectName = '';
     this.selectedFileId = null;
+    this.cdr.detectChanges();
   }
 
   openConfirmationDialog(folder: Folder) {
@@ -207,16 +204,38 @@ export class ExplorerShellComponent implements OnInit {
       error: err => console.error('Error while deleting file:', err)
     });
   }
- 
+
   openFolderById(folderId: string | null) {
+    if (this.isProcessingFolderSelection) return;
+
+    this.isProcessingFolderSelection = true;
+
     this.selectedFolderId = this.normalizeParentIdForFrontend(folderId);
 
-    if (this.selectedFolderId === null) {      
+    if (this.selectedFolderId === null) {
       console.log('ROOT folder selected');
+      this.folderService.loadRootFolders().subscribe({
+        next: () => {
+          console.log('ROOT folder opened');
+          this.selectedFolderId = null;
+          this.cdr.detectChanges();
+          this.isProcessingFolderSelection = false;
+        },
+        error: err => {
+          console.error('Error while opening ROOT folder:', err);
+          this.isProcessingFolderSelection = false;
+        }
+      });
     } else {
       this.folderService.loadFolderChildren(this.selectedFolderId).subscribe({
-        next: () => console.log('Folder opened'),
-        error: err => console.error('Error while opening folder:', err)
+        next: () => {
+          console.log('Folder opened');
+          this.isProcessingFolderSelection = false;
+        },
+        error: err => {
+          console.error('Error while opening folder:', err);
+          this.isProcessingFolderSelection = false;
+        }
       });
     }
   }
@@ -228,7 +247,7 @@ export class ExplorerShellComponent implements OnInit {
   }
 
   uploadFiles(ev: any) {
-    if (ev && ev.files) {  
+    if (ev && ev.files) {
       const pid = this.normalizeParentIdForFrontend(ev.parentId);
       this.uploadToServer(pid, ev.files as globalThis.File[]);
     } else if (typeof ev === 'string' || ev === null) {
@@ -247,27 +266,58 @@ export class ExplorerShellComponent implements OnInit {
   }
 
   onTreeFileSelected(ev: { fileId: string, parentId?: string | null, file?: AppFile }) {
+    if (this.isProcessingFolderSelection) return;
+
+    this.isProcessingFolderSelection = true;
+
     const parentNormalized = this.normalizeParentIdForFrontend(ev.parentId ?? null);
     if (parentNormalized) {
       this.selectedFolderId = parentNormalized;
       this.folderService.loadFolderChildren(parentNormalized).subscribe({
-        next: () => { },
-        error: err => console.error('Error while loading folder on file selection:', err)
+        next: () => {
+          this.isProcessingFolderSelection = false;
+        },
+        error: err => {
+          console.error('Error while loading folder on file selection:', err);
+          this.isProcessingFolderSelection = false;
+        }
       });
     } else {
       this.selectedFolderId = null;
+      this.isProcessingFolderSelection = false;
     }
     this.selectedFileId = ev.fileId;
   }
 
   onFolderSelectedFromTree(folderId: string | null) {
+    if (this.isProcessingFolderSelection) return;
+
+    this.isProcessingFolderSelection = true;
+
     this.selectedFileId = null;
     this.selectedFolderId = this.normalizeParentIdForFrontend(folderId);
 
-    if (this.selectedFolderId === null) {   
-      console.log('ROOT folder selected from tree');
+    if (this.selectedFolderId === null) {
+      this.folderService.loadRootFolders().subscribe({
+        next: () => {
+          this.cdr.detectChanges();
+          this.isProcessingFolderSelection = false;
+        },
+        error: (err) => {
+          console.error('Error loading root folders:', err);
+          this.isProcessingFolderSelection = false;
+        }
+      });
     } else {
-      this.folderService.loadFolderChildren(this.selectedFolderId).subscribe();
+      this.folderService.loadFolderChildren(this.selectedFolderId).subscribe({
+        next: () => {
+          this.isProcessingFolderSelection = false;
+        },
+        error: (err) => {
+          console.error('Error loading folder children:', err);
+          this.isProcessingFolderSelection = false;
+        }
+      });
     }
   }
 
@@ -281,19 +331,18 @@ export class ExplorerShellComponent implements OnInit {
     if (!files || files.length === 0) return;
 
     this.isUploading.set(true);
-  
+
     this.fileService.uploadFiles(parentId, files)
       .pipe(finalize(() => this.isUploading.set(false)))
       .subscribe({
         next: uploadedFiles => {
           this.messageService.add({ severity: 'success', summary: 'Done', detail: `${uploadedFiles.length} file(s) uploaded` });
-       
+
           if (parentId) {
-            this.folderService.loadFolderChildren(parentId).subscribe();
+            this.folderService.refreshFolderChildren(parentId).subscribe();
           } else {
-            this.folderService.loadRootFolders().subscribe({
+            this.folderService.refreshRootFolders().subscribe({
               next: () => {
-                console.log('Root folders reloaded after uploading files');
                 this.cdr.detectChanges();
               },
               error: err => console.error('Error reloading root folders:', err)
@@ -306,4 +355,16 @@ export class ExplorerShellComponent implements OnInit {
         }
       });
   }
+
+  private normalizeParentIdForFrontend(id: string | null | undefined): string | null {
+    if (id === null || id === undefined) {
+      return null;
+    }
+    const trimmed = id.trim();
+    if (trimmed === '' || trimmed === '00000000-0000-0000-0000-000000000000') {
+      return null;
+    }
+    return trimmed;
+  }
+
 }

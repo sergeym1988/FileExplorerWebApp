@@ -1,5 +1,5 @@
 <p-dialog [(visible)]="visible" [modal]="true" header="Upload Files" [style]="{width: '30rem'}">
-  <p-fileUpload name="files[]" multiple="true" accept=".png,.jpg,.jpeg,.txt" maxFileSize="5000000" customUpload="true"
-    (uploadHandler)="onUpload($event)">
+  <p-fileUpload #fileUpload name="files[]" multiple="true" accept=".png,.jpg,.jpeg,.txt" maxFileSize="5000000"
+    customUpload="true" (uploadHandler)="onUpload($event)">
   </p-fileUpload>
 </p-dialog>

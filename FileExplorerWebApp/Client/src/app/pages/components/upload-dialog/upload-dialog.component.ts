@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output, ChangeDetectorRef } from '@angular/core';
+import { Component, EventEmitter, Output, ChangeDetectorRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DialogModule } from 'primeng/dialog';
 import { FileUploadModule } from 'primeng/fileupload';
@@ -13,6 +13,7 @@ import { ButtonModule } from 'primeng/button';
 export class UploadDialogComponent {
   visible = false;
   @Output() filesSelected = new EventEmitter<File[]>();
+  @ViewChild('fileUpload') fileUpload: any;
 
   constructor(private cdr: ChangeDetectorRef) { }
 
@@ -23,6 +24,9 @@ export class UploadDialogComponent {
 
   close() {
     this.visible = false;
+    if (this.fileUpload) {
+      this.fileUpload.clear();
+    }
   }
 
   onUpload(event: any) {

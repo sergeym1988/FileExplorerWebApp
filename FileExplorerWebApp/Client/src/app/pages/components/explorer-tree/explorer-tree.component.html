@@ -7,15 +7,15 @@
       <ng-template let-node pTemplate="default">
         <div *ngIf="node?.data?.type === 'folder'" class="tree-row group"
           [class.active-folder]="selectedFolderId === node.key">
-          <span class="node-label" (click)="onLabelClick(node)">
+          <span class="node-label">
             <i class="pi pi-folder mr-2"></i>
             {{ node.label }}
           </span>
 
           <div class="node-actions" (click)="$event.stopPropagation()">
             <button pButton icon="pi pi-plus" class="p-button-rounded p-button-sm" (click)="addFolder(node)"></button>
-            <button pButton icon="pi pi-pencil" class="p-button-rounded p-button-sm"
-              (click)="renameFolder(node)" [disabled]="isRootFolder(node)"></button>
+            <button pButton icon="pi pi-pencil" class="p-button-rounded p-button-sm" (click)="renameFolder(node)"
+              [disabled]="isRootFolder(node)"></button>
             <button pButton icon="pi pi-upload" class="p-button-rounded p-button-sm"
               (click)="uploadFile(node)"></button>
             <button pButton icon="pi pi-trash" class="p-button-rounded p-button-sm p-button-danger"
