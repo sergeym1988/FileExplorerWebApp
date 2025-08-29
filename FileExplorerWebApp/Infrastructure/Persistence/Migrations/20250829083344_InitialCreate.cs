@@ -16,7 +16,7 @@ namespace FileExplorerWebApp.Infrastructure.Persistence.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    Name = table.Column<string>(type: "text", nullable: false),
+                    Name = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
                     ParentFolderId = table.Column<Guid>(type: "uuid", nullable: true),
                     CreatedDateTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     LastModifiedDateTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
@@ -33,22 +33,22 @@ namespace FileExplorerWebApp.Infrastructure.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "FileItems",
+                name: "Files",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     FolderId = table.Column<Guid>(type: "uuid", nullable: true),
-                    Name = table.Column<string>(type: "text", nullable: false),
-                    Mime = table.Column<string>(type: "text", nullable: false),
+                    Name = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    Mime = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     Content = table.Column<byte[]>(type: "bytea", nullable: false),
                     CreatedDateTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     LastModifiedDateTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_FileItems", x => x.Id);
+                    table.PrimaryKey("PK_Files", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_FileItems_Folders_FolderId",
+                        name: "FK_Files_Folders_FolderId",
                         column: x => x.FolderId,
                         principalTable: "Folders",
                         principalColumn: "Id",
@@ -56,8 +56,8 @@ namespace FileExplorerWebApp.Infrastructure.Persistence.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_FileItems_FolderId",
-                table: "FileItems",
+                name: "IX_Files_FolderId",
+                table: "Files",
                 column: "FolderId");
 
             migrationBuilder.CreateIndex(
@@ -70,7 +70,7 @@ namespace FileExplorerWebApp.Infrastructure.Persistence.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "FileItems");
+                name: "Files");
 
             migrationBuilder.DropTable(
                 name: "Folders");

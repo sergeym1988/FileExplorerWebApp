@@ -5,7 +5,7 @@ import { AppFile, Folder } from '../models/models';
 
 @Injectable({ providedIn: 'root' })
 export class FolderService {
-  private apiUrl = 'api/folder';
+  private apiUrl = 'api/folders';
   folders = signal<Folder[]>([]);
 
   constructor(private http: HttpClient) { }
@@ -77,7 +77,7 @@ export class FolderService {
   renameFolder(folder: Folder): Observable<void> {
     if (!folder.id) return throwError(() => new Error('Folder id is required'));
 
-    return this.http.put<void>(`${this.apiUrl}/${folder.id}`, folder).pipe(
+    return this.http.patch<void>(`${this.apiUrl}/${folder.id}`, folder).pipe(
       tap(() => {
         this.folders.update(current => this.renameRecursive(current, folder.id!, folder.name));
       })

@@ -1,16 +1,10 @@
 ﻿using FileExplorerWebApp.Application.DTOs;
 using FileExplorerWebApp.Application.Interfaces.Repositories;
 using FileExplorerWebApp.Application.Mediator.Queries;
-using FileExplorerWebApp.Domain.Entities;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 
 namespace FileExplorerWebApp.Application.Mediator.Handlers
 {
-    /// <summary>
-    /// The get root folder handler
-    /// </summary>
-    /// <seealso cref="MediatR.IRequestHandler&lt;FileExplorerWebApp.Application.Mediator.Queries.FolderQueries.GetRootFoldersQuery, System.Collections.Generic.List&lt;FileExplorerWebApp.Application.DTOs.FolderDto&gt;&gt;" />
     public class GetRootFoldersHandler
         : IRequestHandler<FolderQueries.GetRootFoldersQuery, List<FolderDto>>
     {
@@ -33,50 +27,37 @@ namespace FileExplorerWebApp.Application.Mediator.Handlers
         {
             try
             {
-                var rootFolders = await _repositoryWrapper
-                    .Folders.FindByCondition(f => f.ParentFolderId == null)
-                    .ToListAsync(cancellationToken);
+                var rootFolders = await _repositoryWrapper.Folders.GetRootFoldersAsync();
 
-                var folderDtos = new List<FolderDto>();
+                var rootFolderIds = rootFolders.Select(f => f.Id).ToList();
 
-                if (rootFolders.Any())
-                {
-                    var rootFolderIds = rootFolders.Select(f => f.Id).ToList();
+                var subfolderCounts = await _repositoryWrapper.Folders.GetSubfolderCountsAsync(
+                    rootFolderIds,
+                    cancellationToken
+                );
+                var fileCounts = await _repositoryWrapper.Files.GetFileCountsByFolderIdsAsync(
+                    rootFolderIds,
+                    cancellationToken
+                );
 
-                    var subfolderCounts = await _repositoryWrapper
-                        .Folders.FindByCondition(f =>
-                            f.ParentFolderId != null
-                            && rootFolderIds.Contains(f.ParentFolderId.Value)
-                        )
-                        .GroupBy(f => f.ParentFolderId)
-                        .Select(g => new { ParentId = g.Key, Count = g.Count() })
-                        .ToListAsync(cancellationToken);
+                var folderDtos = rootFolders
+                    .Select(f => new FolderDto
+                    {
+                        Id = f.Id,
+                        Name = f.Name,
+                        ParentFolderId = f.ParentFolderId,
+                        HasChildren =
+                            subfolderCounts.ContainsKey(f.Id) || fileCounts.ContainsKey(f.Id),
+                        CreatedDateTime = f.CreatedDateTime,
+                        LastModifiedDateTime = f.LastModifiedDateTime,
+                        SubFolders = null,
+                        Files = null,
+                    })
+                    .ToList();
 
-                    var fileCounts = await _repositoryWrapper
-                        .Files.FindByCondition(f =>
-                            f.FolderId != null && rootFolderIds.Contains(f.FolderId.Value)
-                        )
-                        .GroupBy(f => f.FolderId)
-                        .Select(g => new { ParentId = g.Key, Count = g.Count() })
-                        .ToListAsync(cancellationToken);
+                var rootFiles = await _repositoryWrapper.Files.GetRootFilesAsync();
 
-                    folderDtos = rootFolders
-                        .Select(f => new FolderDto
-                        {
-                            Id = f.Id,
-                            Name = f.Name,
-                            ParentFolderId = f.ParentFolderId,
-                            HasChildren =
-                                subfolderCounts.Any(x => x.ParentId == f.Id)
-                                || fileCounts.Any(x => x.ParentId == f.Id),
-                            CreatedDateTime = (f as Audit)?.CreatedDateTime,
-                            LastModifiedDateTime = (f as Audit)?.LastModifiedDateTime,
-                        })
-                        .ToList();
-                }
-
-                var rootFiles = await _repositoryWrapper
-                    .Files.FindByCondition(fi => fi.FolderId == null)
+                var rootFilesDto = rootFiles
                     .Select(fi => new FileDto
                     {
                         Id = fi.Id,
@@ -86,16 +67,16 @@ namespace FileExplorerWebApp.Application.Mediator.Handlers
                         CreatedDateTime = fi.CreatedDateTime,
                         LastModifiedDateTime = fi.LastModifiedDateTime,
                     })
-                    .ToListAsync(cancellationToken);
+                    .ToList();
 
                 var root = new FolderDto
                 {
                     Id = Guid.Empty,
                     Name = "Root",
                     ParentFolderId = null,
-                    HasChildren = (folderDtos?.Any() == true) || (rootFiles?.Any() == true),
+                    HasChildren = folderDtos.Any() || rootFilesDto.Any(),
                     SubFolders = folderDtos,
-                    Files = rootFiles,
+                    Files = rootFilesDto,
                 };
 
                 return new List<FolderDto> { root };

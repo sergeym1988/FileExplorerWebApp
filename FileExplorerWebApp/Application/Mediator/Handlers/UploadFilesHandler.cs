@@ -1,7 +1,9 @@
 ﻿using AutoMapper;
 using FileExplorerWebApp.Application.DTOs;
+using FileExplorerWebApp.Application.DTOs.Preview;
 using FileExplorerWebApp.Application.Interfaces.Repositories;
 using FileExplorerWebApp.Application.Options;
+using FileExplorerWebApp.Infrastructure.Utils;
 using MediatR;
 using Microsoft.Extensions.Options;
 using static FileExplorerWebApp.Application.Mediator.Commands.FileCommands;
@@ -59,13 +61,6 @@ public class UploadFilesHandler : IRequestHandler<UploadFilesCommand, List<FileD
         var incomingFiles = request.Files;
         if (incomingFiles.Count > _options.MaxFilesCount)
         {
-            _logger.LogWarning(
-                "Upload request contains {Count} files but MaxFilesCount is {Max}. Only the first {Max} will be processed.",
-                incomingFiles.Count,
-                _options.MaxFilesCount,
-                _options.MaxFilesCount
-            );
-
             incomingFiles = incomingFiles.Take(_options.MaxFilesCount).ToList();
         }
 
@@ -74,7 +69,6 @@ public class UploadFilesHandler : IRequestHandler<UploadFilesCommand, List<FileD
             var parent = await _repositoryWrapper.Folders.FindByIdAsync(request.ParentId);
             if (parent == null)
             {
-                _logger.LogWarning("Parent folder {ParentId} not found", request.ParentId);
                 return new List<FileDto>();
             }
         }
@@ -98,31 +92,11 @@ public class UploadFilesHandler : IRequestHandler<UploadFilesCommand, List<FileD
 
             if (!string.IsNullOrEmpty(ext) && !_allowedExtensions.Contains(ext))
             {
-                _logger.LogWarning(
-                    "File {FileName} has disallowed extension {Ext}. Skipping.",
-                    fileName,
-                    ext
-                );
                 continue;
-            }
-
-            if (!string.IsNullOrEmpty(mime) && !_allowedMimeTypes.Contains(mime))
-            {
-                _logger.LogWarning(
-                    "File {FileName} has disallowed mime type {Mime}. It will still be processed.",
-                    fileName,
-                    mime
-                );
             }
 
             if (_maxFileSizeBytes > 0 && formFile.Length > _maxFileSizeBytes)
             {
-                _logger.LogWarning(
-                    "File {FileName} is too large ({Size} bytes). Max allowed is {MaxBytes}. Skipping.",
-                    fileName,
-                    formFile.Length,
-                    _maxFileSizeBytes
-                );
                 continue;
             }
 
@@ -149,7 +123,6 @@ public class UploadFilesHandler : IRequestHandler<UploadFilesCommand, List<FileD
 
         if (createdEntities.Count == 0)
         {
-            _logger.LogInformation("No files were created for parent {ParentId}", request.ParentId);
             return new List<FileDto>();
         }
 
@@ -167,12 +140,25 @@ public class UploadFilesHandler : IRequestHandler<UploadFilesCommand, List<FileD
             throw;
         }
 
-        var dtos = _mapper.Map<List<FileDto>>(createdEntities);
-        _logger.LogInformation(
-            "Uploaded and saved {Count} files for parent {ParentId}",
-            dtos.Count,
-            request.ParentId
-        );
+        var dtos = new List<FileDto>();
+
+        foreach (var file in createdEntities)
+        {
+            var dto = _mapper.Map<FileDto>(file);
+
+            PreviewResult preview = await PreviewGenerator.GetOrCreatePreviewAsync(
+                file.Id,
+                file.Content,
+                file.Mime
+            );
+
+            dto.Preview = preview.PreviewBytes;
+            dto.PreviewMime = preview.PreviewMime;
+            dto.PreviewKind = preview.Kind;
+
+            dtos.Add(dto);
+        }
+
         return dtos;
     }
 }

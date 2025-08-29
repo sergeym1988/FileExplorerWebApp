@@ -6,7 +6,7 @@ import { FolderService } from './folder.service';
 
 @Injectable({ providedIn: 'root' })
 export class FileService {
-  private apiUrl = 'api/file';
+  private apiUrl = 'api/files';
   files = signal<AppFile[]>([]);
 
   constructor(private http: HttpClient, private folderService: FolderService) { }
@@ -16,7 +16,7 @@ export class FileService {
     formData.append('parentId', parentId);
     files.forEach((f: globalThis.File) => formData.append('files', f, f.name));
 
-    return this.http.post<AppFile[]>(`${this.apiUrl}/upload`, formData).pipe(
+    return this.http.post<AppFile[]>(`${this.apiUrl}`, formData).pipe(
       tap(uploaded => {
         this.files.update(current => [...current, ...uploaded]);
 
@@ -38,7 +38,7 @@ export class FileService {
   renameFile(file: AppFile): Observable<void> {
     if (!file.id) return throwError(() => new Error('File id is required'));
 
-    return this.http.put<void>(`${this.apiUrl}/${file.id}`, file).pipe(
+    return this.http.patch<void>(`${this.apiUrl}/${file.id}`, file).pipe(
       tap(() => {
         this.files.update(current =>
           current.map(f => f.id === file.id ? { ...f, name: file.name } : f)

@@ -46,17 +46,19 @@ namespace FileExplorerWebApp.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Mime")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("FolderId");
 
-                    b.ToTable("FileItems");
+                    b.ToTable("Files");
                 });
 
             modelBuilder.Entity("FileExplorerWebApp.Domain.Entities.Folder", b =>
@@ -73,7 +75,8 @@ namespace FileExplorerWebApp.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
 
                     b.Property<Guid?>("ParentFolderId")
                         .HasColumnType("uuid");

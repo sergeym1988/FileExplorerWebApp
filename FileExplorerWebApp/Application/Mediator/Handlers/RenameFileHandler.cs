@@ -35,7 +35,7 @@ namespace FileExplorerWebApp.Application.Mediator.Handlers
                     return false;
                 }
 
-                file.Name = request.FileDto.Name;
+                file.Name = request.FileDto.Name ?? string.Empty;
                 file.LastModifiedDateTime = DateTime.UtcNow;
 
                 _repositoryWrapper.Files.Update(file);

@@ -1,28 +1,29 @@
-﻿using FileExplorerWebApp.Application.DTOs;
+﻿using AutoMapper;
+using FileExplorerWebApp.Application.DTOs;
 using FileExplorerWebApp.Application.Interfaces.Repositories;
 using FileExplorerWebApp.Application.Mediator.Queries;
-using FileExplorerWebApp.Domain.Entities;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 
 namespace FileExplorerWebApp.Application.Mediator.Handlers
 {
     /// <summary>
-    /// Get subfolders by parent folder id.
+    /// Handler for retrieving subfolders by parent folder id.
     /// </summary>
-    /// <seealso cref="MediatR.IRequestHandler&lt;FileExplorerWebApp.Application.Mediator.Queries.FolderQueries.GetSubfoldersByIdQuery, System.Collections.Generic.List&lt;FileExplorerWebApp.Application.DTOs.FolderDto&gt;&gt;" />
     public class GetSubfoldersByIdHandler
         : IRequestHandler<FolderQueries.GetSubfoldersByIdQuery, List<FolderDto>?>
     {
         private readonly IRepositoryWrapper _repositoryWrapper;
+        private readonly IMapper _mapper;
         private readonly ILogger<GetSubfoldersByIdHandler> _logger;
 
         public GetSubfoldersByIdHandler(
             IRepositoryWrapper repositoryWrapper,
+            IMapper mapper,
             ILogger<GetSubfoldersByIdHandler> logger
         )
         {
             _repositoryWrapper = repositoryWrapper;
+            _mapper = mapper;
             _logger = logger;
         }
 
@@ -33,73 +34,48 @@ namespace FileExplorerWebApp.Application.Mediator.Handlers
         {
             try
             {
-                Guid? parentIdForQuery = request.FolderId == Guid.Empty ? null : request.FolderId;
+                Guid? parentId = request.FolderId == Guid.Empty ? null : request.FolderId;
 
-                Folder? parentEntity = null;
-                if (parentIdForQuery.HasValue)
-                {
-                    parentEntity = await _repositoryWrapper
-                        .Folders.FindByCondition(f => f.Id == parentIdForQuery.Value)
-                        .AsNoTracking()
-                        .FirstOrDefaultAsync(cancellationToken);
+                var parentFolder = parentId.HasValue
+                    ? await _repositoryWrapper.Folders.GetFolderByIdAsync(
+                        parentId.Value,
+                        cancellationToken
+                    )
+                    : null;
 
-                    if (parentEntity == null)
-                    {
-                        return new List<FolderDto>();
-                    }
-                }
+                if (parentId.HasValue && parentFolder == null)
+                    return new List<FolderDto>();
 
-                var childFolders = await _repositoryWrapper
-                    .Folders.FindByCondition(f => f.ParentFolderId == parentIdForQuery)
-                    .AsNoTracking()
-                    .ToListAsync(cancellationToken);
-
+                var childFolders = await _repositoryWrapper.Folders.GetChildFoldersAsync(
+                    parentId,
+                    cancellationToken
+                );
                 var childIds = childFolders.Select(f => f.Id).ToList();
 
-                var subfolderCounts = new List<(Guid ParentId, int Count)>();
-                if (childIds.Count > 0)
+                var subfolderCounts = await _repositoryWrapper.Folders.GetSubfolderCountsAsync(
+                    childIds,
+                    cancellationToken
+                );
+
+                var childDtos = _mapper.Map<List<FolderDto>>(childFolders);
+
+                foreach (var dto in childDtos)
                 {
-                    var subfolderGroups = await _repositoryWrapper
-                        .Folders.FindByCondition(f =>
-                            f.ParentFolderId != null && childIds.Contains(f.ParentFolderId.Value)
-                        )
-                        .AsNoTracking()
-                        .GroupBy(f => f.ParentFolderId)
-                        .Select(g => new { ParentId = g.Key, Count = g.Count() })
-                        .ToListAsync(cancellationToken);
-
-                    subfolderCounts = subfolderGroups
-                        .Where(x => x.ParentId.HasValue)
-                        .Select(x => (x.ParentId.Value, x.Count))
-                        .ToList();
+                    dto.HasChildren = subfolderCounts.ContainsKey(dto.Id);
+                    dto.SubFolders = null;
+                    dto.Files = null;
                 }
-
-                var childDtos = childFolders
-                    .Select(f => new FolderDto
-                    {
-                        Id = f.Id,
-                        Name = f.Name,
-                        ParentFolderId = f.ParentFolderId,
-                        HasChildren = subfolderCounts.Any(x => x.ParentId == f.Id && x.Count > 0),
-                        CreatedDateTime = (f as Audit)?.CreatedDateTime,
-                        LastModifiedDateTime = (f as Audit)?.LastModifiedDateTime,
-                        SubFolders = null,
-                        Files = null,
-                    })
-                    .ToList();
 
                 var parentDto = new FolderDto
                 {
                     Id = request.FolderId,
-                    Name = parentEntity != null ? parentEntity.Name : "Root",
-                    ParentFolderId = parentEntity?.ParentFolderId,
-                    HasChildren = (childDtos?.Any() == true),
+                    Name = parentFolder?.Name ?? "Root",
+                    ParentFolderId = parentFolder?.ParentFolderId,
+                    HasChildren = childDtos.Any(),
                     SubFolders = childDtos,
                     Files = null,
-                    CreatedDateTime = parentEntity is Audit pa ? pa.CreatedDateTime : null,
-                    LastModifiedDateTime = parentEntity is Audit pb
-                        ? pb.LastModifiedDateTime
-                        : null,
+                    CreatedDateTime = parentFolder?.CreatedDateTime,
+                    LastModifiedDateTime = parentFolder?.LastModifiedDateTime,
                 };
 
                 return new List<FolderDto> { parentDto };

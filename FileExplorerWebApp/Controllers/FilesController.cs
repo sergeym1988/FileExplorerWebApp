@@ -10,18 +10,18 @@ namespace FileExplorerWebApp.Controllers
     /// Controller responsible for file operations.
     /// </summary>
     [ApiController]
-    [Route("api/file")]
+    [Route("api/files")]
     [EnableRateLimiting("sliding")]
-    public class FileController : BaseController
+    public class FilesController : BaseController
     {
-        public FileController(ILogger<FileController> logger, IMediator mediator)
+        public FilesController(ILogger<FilesController> logger, IMediator mediator)
             : base(logger, mediator) { }
 
         /// <summary>
         /// Upload one or more files to a folder.
         /// Expects multipart/form-data with 'parentId' field and one or more 'files' parts.
         /// </summary>
-        [HttpPost("upload")]
+        [HttpPost()]
         [DisableRequestSizeLimit]
         public async Task<IActionResult> UploadFiles(
             [FromForm] Guid parentId,
@@ -51,7 +51,7 @@ namespace FileExplorerWebApp.Controllers
         /// <summary>
         /// Rename (update) file metadata (e.g. name).
         /// </summary>
-        [HttpPut("{id:guid}")]
+        [HttpPatch("{id:guid}")]
         public async Task<IActionResult> RenameFile(Guid id, [FromBody] FileDto fileDto)
         {
             try

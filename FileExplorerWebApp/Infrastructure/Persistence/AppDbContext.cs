@@ -12,8 +12,8 @@ namespace FileExplorerWebApp.Infrastructure.Persistence
         public AppDbContext(DbContextOptions<AppDbContext> options)
             : base(options) { }
 
-        public DbSet<Folder> Folders => Set<Folder>();
-        public DbSet<Domain.Entities.File> FileItems => base.Set<Domain.Entities.File>();
+        public DbSet<Folder> Folders { get; set; }
+        public DbSet<Domain.Entities.File> Files { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -23,25 +23,29 @@ namespace FileExplorerWebApp.Infrastructure.Persistence
             {
                 entity.HasKey(f => f.Id);
 
+                entity.Property(f => f.Name).IsRequired().HasMaxLength(255);
+
                 entity
                     .HasMany(f => f.SubFolders)
                     .WithOne(f => f.ParentFolder)
+                    .HasForeignKey(f => f.ParentFolderId)
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity
                     .HasMany(f => f.Files)
                     .WithOne(f => f.Folder)
+                    .HasForeignKey(f => f.FolderId)
                     .OnDelete(DeleteBehavior.Cascade);
-
-                entity.Property(f => f.Name).IsRequired();
             });
 
             modelBuilder.Entity<Domain.Entities.File>(entity =>
             {
                 entity.HasKey(f => f.Id);
 
-                entity.Property(f => f.Name).IsRequired();
-                entity.Property(f => f.Mime).IsRequired();
+                entity.Property(f => f.Name).IsRequired().HasMaxLength(255);
+
+                entity.Property(f => f.Mime).IsRequired().HasMaxLength(100);
+
                 entity.Property(f => f.Content).IsRequired();
 
                 entity

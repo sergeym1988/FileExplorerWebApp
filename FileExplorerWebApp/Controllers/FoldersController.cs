@@ -11,14 +11,14 @@ namespace FileExplorerWebApp.Controllers
     /// Controller responsible for folder's operations.
     /// </summary>
     [ApiController]
-    [Route("api/folder")]
+    [Route("api/folders")]
     [EnableRateLimiting("sliding")]
-    public class FolderController : BaseController
+    public class FoldersController : BaseController
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="SorterController"/> class.
+        /// Initializes a new instance of the <see cref="FoldersController"/> class.
         /// </summary>
-        public FolderController(ILogger<FolderController> logger, IMediator mediator)
+        public FoldersController(ILogger<FoldersController> logger, IMediator mediator)
             : base(logger, mediator) { }
 
         /// <summary>
@@ -103,9 +103,9 @@ namespace FileExplorerWebApp.Controllers
         }
 
         ///// <summary>
-        ///// Update folder.
+        ///// Renamr folder.
         ///// </summary>
-        [HttpPut("{id}")]
+        [HttpPatch("{id}")]
         public async Task<IActionResult> RenameFolder(Guid id, [FromBody] FolderDto folderDto)
         {
             try
