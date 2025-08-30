@@ -1,17 +1,23 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, PLATFORM_ID, Inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { tap, Observable, throwError } from 'rxjs';
 import { AppFile, Folder } from '../models/models';
 import { FolderUtils } from '../utils/folder-utils';
+import { isPlatformBrowser } from '@angular/common';
 
 @Injectable({ providedIn: 'root' })
 export class FolderService {
   private apiUrl = 'api/folders';
   folders = signal<Folder[]>([]);
 
-  constructor(private http: HttpClient, private folderUtils: FolderUtils) { }
+  constructor(
+    private http: HttpClient,
+    private folderUtils: FolderUtils,
+    @Inject(PLATFORM_ID) private platformId: Object
+  ) { }
 
   loadRootFolders(): Observable<Folder[]> {
+
     return this.http.get<Folder[]>(`${this.apiUrl}/root`).pipe(
       tap(data => {
         this.folders.set(data || []);
@@ -20,14 +26,17 @@ export class FolderService {
   }
 
   getContentByParentFolderId(parentId: string): Observable<Folder[]> {
+
     return this.http.get<Folder[]>(`${this.apiUrl}/${parentId}/content`);
   }
 
   getSubFoldersByParentId(parentId: string): Observable<Folder[]> {
+
     return this.http.get<Folder[]>(`${this.apiUrl}/${parentId}/subfolders`);
   }
 
   loadFolderChildren(parentId: string): Observable<Folder[]> {
+
     return this.getContentByParentFolderId(parentId).pipe(
       tap(response => {
         const parentDto = response[0];
@@ -46,6 +55,13 @@ export class FolderService {
   }
 
   loadSubFolders(parentId: string): Observable<Folder[]> {
+    if (!isPlatformBrowser(this.platformId)) {
+      return new Observable(subscriber => {
+        subscriber.next([]);
+        subscriber.complete();
+      });
+    }
+
     return this.getSubFoldersByParentId(parentId).pipe(
       tap(response => {
         const parentDto = response[0];
@@ -64,6 +80,7 @@ export class FolderService {
   }
 
   createFolder(folder: Partial<Folder>) {
+
     return this.http.post<Folder>(this.apiUrl, folder).pipe(
       tap(created => {
         if (!created.parentFolderId) {
@@ -86,6 +103,7 @@ export class FolderService {
   }
 
   deleteFolder(folderId: string): Observable<void> {
+
     return this.http.delete<void>(`${this.apiUrl}/${folderId}`).pipe(
       tap(() => {
         this.folders.update(current => this.folderUtils.deleteRecursive(current, folderId));
@@ -109,10 +127,12 @@ export class FolderService {
   }
 
   refreshRootFolders(): Observable<Folder[]> {
+
     return this.loadRootFolders();
   }
 
   refreshFolderChildren(parentId: string): Observable<Folder[]> {
+
     return this.loadFolderChildren(parentId);
   }
 }

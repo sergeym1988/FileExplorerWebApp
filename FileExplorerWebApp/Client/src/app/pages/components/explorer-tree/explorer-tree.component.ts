@@ -80,7 +80,7 @@ export class ExplorerTreeComponent {
 
     if (node.data?.type === 'folder') {
       if (this.isRootFolder(node)) {
-        this.getFolderByIdEvent.emit(null); // Emit null for ROOT
+        this.getFolderByIdEvent.emit(null);
       } else {
         this.getFolderByIdEvent.emit(node.key as string);
       }
@@ -102,10 +102,19 @@ export class ExplorerTreeComponent {
 
     const node: TreeNode = event.node;
     const id = node.key as string;
-    if (id) {
+
+    if (id && node.data?.type === 'folder') {
       const currentExpanded = this.expandedKeys();
       currentExpanded.add(id);
       this.expandedKeys.set(new Set(currentExpanded));
+
+      const folder = this.findFolderById(this.folderService.folders(), id);
+      if (folder && (!folder.subFolders || folder.subFolders.length === 0)) {
+        this.folderService.loadSubFolders(id).subscribe({
+          next: () => { },
+          error: err => console.error('Error loading subfolders on expand:', err)
+        });
+      }
     }
 
     this.isProcessingNodeExpand = false;
@@ -122,13 +131,34 @@ export class ExplorerTreeComponent {
 
   expandFolderById(folderId: string) {
     if (!folderId) return;
+
     const currentExpanded = this.expandedKeys();
     currentExpanded.add(folderId);
     this.expandedKeys.set(new Set(currentExpanded));
+
     const folder = this.findFolderById(this.folderService.folders(), folderId);
-    if (folder && (!folder.subFolders || folder.subFolders.length === 0)) {
-      this.folderService.loadSubFolders(folderId).subscribe({
-        error: err => console.error('loadSubFolders error:', err)
+    if (folder) {
+      if (!folder.subFolders || folder.subFolders.length === 0) {
+        this.folderService.loadSubFolders(folderId).subscribe({
+          next: () => { },
+          error: err => console.error('loadSubFolders error:', err)
+        });
+      } else {
+      }
+    }
+  }
+
+  restoreExpandedState() {
+    const rootFolders = this.folderService.folders();
+    if (rootFolders && rootFolders.length > 0) {
+      rootFolders.forEach(rootFolder => {
+        this.expandFolderById(rootFolder.id);
+
+        if (!rootFolder.subFolders || rootFolder.subFolders.length === 0) {
+          this.folderService.loadSubFolders(rootFolder.id).subscribe({
+            error: err => console.error('Error loading subfolders during restore:', err)
+          });
+        }
       });
     }
   }

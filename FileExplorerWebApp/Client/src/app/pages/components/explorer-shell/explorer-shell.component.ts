@@ -122,8 +122,7 @@ export class ExplorerShellComponent implements OnInit, OnDestroy {
     switch (this.drawerMode) {
       case DrawerMode.Add:
         const parentIdFrontend = this.selectedFolderId ?? null;
-        const newFolder: Partial<Folder> = { name, parentFolderId: parentIdFrontend ?? undefined }; // pass undefined for root
-        console.debug('Creating folder. parentId(frontend)=', parentIdFrontend, 'name=', name);
+        const newFolder: Partial<Folder> = { name, parentFolderId: parentIdFrontend ?? undefined };
         this.folderService.createFolder(newFolder).subscribe({
           next: (createdFolder) => {
             if (parentIdFrontend) {
@@ -131,7 +130,10 @@ export class ExplorerShellComponent implements OnInit, OnDestroy {
             } else {
               this.folderService.refreshRootFolders().subscribe({
                 next: () => {
-                  console.log('Root folders reloaded after creating folder');
+
+                  setTimeout(() => {
+                    this.tree?.restoreExpandedState();
+                  }, 100);
                   this.cdr.detectChanges();
                 },
                 error: err => console.error('Error reloading root folders:', err)
@@ -195,15 +197,81 @@ export class ExplorerShellComponent implements OnInit, OnDestroy {
   }
 
   deleteFolder(folderId: string) {
+    const parentFolderId = this.findParentFolderId(folderId);
+
     this.folderService.deleteFolder(folderId).subscribe({
-      next: () => console.log('Folder deleted'),
+      next: () => {
+
+        if (parentFolderId) {
+          this.folderService.loadFolderChildren(parentFolderId).subscribe({
+            next: () => {
+              setTimeout(() => {
+                this.tree?.restoreExpandedState();
+              }, 100);
+
+              if (this.selectedFolderId) {
+                this.folderService.loadFolderChildren(this.selectedFolderId).subscribe({
+                  next: () => {
+                    this.cdr.detectChanges();
+                  },
+                  error: err => console.error('Error refreshing folder content:', err)
+                });
+              } else {
+                this.cdr.detectChanges();
+              }
+            },
+            error: err => console.error('Error refreshing parent folder content:', err)
+          });
+        } else {
+          this.folderService.loadRootFolders().subscribe({
+            next: () => {
+              setTimeout(() => {
+                this.tree?.restoreExpandedState();
+              }, 100);
+
+              if (this.selectedFolderId) {
+                this.folderService.loadFolderChildren(this.selectedFolderId).subscribe({
+                  next: () => {
+                    this.cdr.detectChanges();
+                  },
+                  error: err => console.error('Error refreshing folder content:', err)
+                });
+              } else {
+                this.cdr.detectChanges();
+              }
+            },
+            error: err => console.error('Error refreshing root folders:', err)
+          });
+        }
+      },
       error: err => console.error('Error while deleting folder:', err)
     });
   }
 
   deleteFile(fileId: string) {
     this.fileService.deleteFile(fileId).subscribe({
-      next: () => console.log('File deleted'),
+      next: () => {
+
+        if (this.selectedFolderId) {
+          this.folderService.loadFolderChildren(this.selectedFolderId).subscribe({
+            next: () => {
+              this.cdr.detectChanges();
+            },
+            error: err => console.error('Error refreshing folder content:', err)
+          });
+        } else {
+          this.folderService.loadRootFolders().subscribe({
+            next: () => {
+              setTimeout(() => {
+                this.tree?.restoreExpandedState();
+              }, 100);
+
+              this.cdr.detectChanges();
+            },
+            error: err => console.error('Error refreshing root folders:', err)
+          });
+        }
+      },
       error: err => console.error('Error while deleting file:', err)
     });
   }
@@ -216,10 +284,8 @@ export class ExplorerShellComponent implements OnInit, OnDestroy {
     this.selectedFolderId = this.normalizeParentIdForFrontend(folderId);
 
     if (this.selectedFolderId === null) {
-      console.log('ROOT folder selected');
       this.folderService.loadRootFolders().subscribe({
         next: () => {
-          console.log('ROOT folder opened');
           this.selectedFolderId = null;
           this.cdr.detectChanges();
           this.isProcessingFolderSelection = false;
@@ -232,7 +298,6 @@ export class ExplorerShellComponent implements OnInit, OnDestroy {
     } else {
       this.folderService.loadFolderChildren(this.selectedFolderId).subscribe({
         next: () => {
-          console.log('Folder opened');
           this.isProcessingFolderSelection = false;
         },
         error: err => {
@@ -346,6 +411,9 @@ export class ExplorerShellComponent implements OnInit, OnDestroy {
           } else {
             this.folderService.refreshRootFolders().subscribe({
               next: () => {
+                setTimeout(() => {
+                  this.tree?.restoreExpandedState();
+                }, 100);
                 this.cdr.detectChanges();
               },
               error: err => console.error('Error reloading root folders:', err)
@@ -368,5 +436,27 @@ export class ExplorerShellComponent implements OnInit, OnDestroy {
       return null;
     }
     return trimmed;
+  }
+
+  private findParentFolderId(folderId: string): string | null {
+    const folders = this.folderService.folders();
+    return this.findParentFolderIdRecursive(folders, folderId);
+  }
+
+  private findParentFolderIdRecursive(folders: Folder[] | undefined, targetFolderId: string): string | null {
+    if (!folders) return null;
+
+    for (const folder of folders) {
+      if (folder.subFolders) {
+        for (const subFolder of folder.subFolders) {
+          if (subFolder.id === targetFolderId) {
+            return folder.id ?? null;
+          }
+        }
+        const found = this.findParentFolderIdRecursive(folder.subFolders, targetFolderId);
+        if (found) return found;
+      }
+    }
+    return null;
   }
 }
