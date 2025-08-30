@@ -64,7 +64,6 @@ export class ExplorerFilesComponent implements OnDestroy, OnInit {
   @Output() renameFileEvent = new EventEmitter<string>();
   @Output() deleteFileEvent = new EventEmitter<AppFile>();
 
-
   private previewUrlCache = new Map<string, SafeUrl | string | null>();
   private isLoadingContent = false;
 

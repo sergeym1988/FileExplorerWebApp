@@ -28,6 +28,8 @@ export class ExplorerTreeComponent {
   nodes = computed(() => this.convertFoldersToTree(this.folderService.folders()));
   folderOnlyNodes = computed(() => this.filterOutFilesFromNodes(this.nodes()));
   private expandedKeys = signal<Set<string>>(new Set<string>());
+  private isProcessingNodeSelect = false;
+  private isProcessingNodeExpand = false;
 
   constructor(private folderService: FolderService) { }
 
@@ -69,10 +71,6 @@ export class ExplorerTreeComponent {
     return node.key;
   }
 
-
-
-  private isProcessingNodeSelect = false;
-
   onNodeSelect(event: any) {
     if (this.isProcessingNodeSelect) return;
 
@@ -96,8 +94,6 @@ export class ExplorerTreeComponent {
       this.isProcessingNodeSelect = false;
     }, 300);
   }
-
-  private isProcessingNodeExpand = false;
 
   onNodeExpand(event: any) {
     if (this.isProcessingNodeExpand) return;

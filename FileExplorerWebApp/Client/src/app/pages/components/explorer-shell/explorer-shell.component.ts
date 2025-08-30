@@ -78,11 +78,14 @@ export class ExplorerShellComponent implements OnInit, OnDestroy {
         this.closeDrawer();
       }
     };
-    document.addEventListener('keydown', this.escapeKeyHandler);
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('keydown', this.escapeKeyHandler);
+    }
   }
 
   ngOnDestroy() {
-    if (this.escapeKeyHandler) {
+    if (this.escapeKeyHandler && typeof document !== 'undefined') {
       document.removeEventListener('keydown', this.escapeKeyHandler);
     }
   }
@@ -366,5 +369,4 @@ export class ExplorerShellComponent implements OnInit, OnDestroy {
     }
     return trimmed;
   }
-
 }

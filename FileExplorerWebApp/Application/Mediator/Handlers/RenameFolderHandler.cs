@@ -36,7 +36,6 @@ namespace FileExplorerWebApp.Application.Mediator.Handlers
                 }
 
                 folder.Name = request.FolderDto.Name;
-                folder.ParentFolderId = request.FolderDto.ParentFolderId;
                 folder.LastModifiedDateTime = DateTime.UtcNow;
 
                 _repositoryWrapper.Folders.Update(folder);

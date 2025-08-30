@@ -18,18 +18,27 @@ namespace FileExplorerWebApp.Infrastructure.Repositories
         /// Gets the files by folder identifier asynchronous.
         /// </summary>
         /// <param name="folderId">The folder identifier.</param>
+        /// <param name="ct">The ct.</param>
         /// <returns></returns>
         public async Task<IEnumerable<Domain.Entities.File>> GetFilesByFolderIdAsync(
-            Guid folderId
-        ) => await _context.Files.AsNoTracking().Where(fi => fi.FolderId == folderId).ToListAsync();
+            Guid folderId,
+            CancellationToken ct = default
+        ) =>
+            await _context
+                .Files.AsNoTracking()
+                .Where(fi => fi.FolderId == folderId)
+                .ToListAsync(ct);
 
         /// <summary>
         /// Finds the by identifier asynchronous.
         /// </summary>
         /// <param name="id">The identifier.</param>
+        /// <param name="ct">The ct.</param>
         /// <returns></returns>
-        public async Task<Domain.Entities.File?> FindByIdAsync(Guid id) =>
-            await _context.Files.AsNoTracking().FirstOrDefaultAsync(fi => fi.Id == id);
+        public async Task<Domain.Entities.File?> FindByIdAsync(
+            Guid id,
+            CancellationToken ct = default
+        ) => await _context.Files.AsNoTracking().FirstOrDefaultAsync(fi => fi.Id == id, ct);
 
         /// <summary>
         /// Gets the files by folder ids asynchronous.
@@ -39,7 +48,7 @@ namespace FileExplorerWebApp.Infrastructure.Repositories
         /// <returns></returns>
         public async Task<List<Domain.Entities.File>> GetFilesByFolderIdsAsync(
             IEnumerable<Guid> folderIds,
-            CancellationToken ct
+            CancellationToken ct = default
         )
         {
             if (!folderIds.Any())
@@ -59,7 +68,7 @@ namespace FileExplorerWebApp.Infrastructure.Repositories
         /// <returns></returns>
         public async Task<Dictionary<Guid, int>> GetFileCountsByFolderIdsAsync(
             IEnumerable<Guid> folderIds,
-            CancellationToken ct
+            CancellationToken ct = default
         )
         {
             if (!folderIds.Any())
@@ -76,8 +85,10 @@ namespace FileExplorerWebApp.Infrastructure.Repositories
         /// <summary>
         /// Gets the root files asynchronous.
         /// </summary>
+        /// <param name="ct">The ct.</param>
         /// <returns></returns>
-        public async Task<IEnumerable<Domain.Entities.File>> GetRootFilesAsync() =>
-            await _context.Files.Where(fi => fi.FolderId == null).ToListAsync();
+        public async Task<IEnumerable<Domain.Entities.File>> GetRootFilesAsync(
+            CancellationToken ct = default
+        ) => await _context.Files.Where(fi => fi.FolderId == null).ToListAsync(ct);
     }
 }

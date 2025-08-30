@@ -49,6 +49,7 @@ Functionality is limited to the scope of the test task:
 - No validation
 - The system allows the use of files or folders with the same name
 - The UI/UX design is intentionally kept simple for demonstration purposes
+- Requests are not cached, which means each time a request is made, it always goes to the server
 
 ---
 
